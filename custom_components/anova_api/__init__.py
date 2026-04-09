@@ -9,6 +9,7 @@ from homeassistant.helpers import storage
 from homeassistant.components.frontend import async_register_built_in_panel
 from homeassistant.components.http import StaticPathConfig
 import asyncio
+import os
 
 from .anova_lib.client import AnovaClient
 from .const import DOMAIN, CONF_TOKEN, RECIPE_STORAGE_KEY, RECIPE_STORAGE_VERSION
@@ -66,8 +67,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register the custom frontend panel
     # We will serve the panel assets from the www directory
     try:
+        www_dir = os.path.join(os.path.dirname(__file__), "www")
         await hass.http.async_register_static_paths([
-            StaticPathConfig("/anova-panel", hass.config.path("custom_components/anova_api/www"), False)
+            StaticPathConfig("/anova-panel", www_dir, False)
         ])
         async_register_built_in_panel(
             hass,
