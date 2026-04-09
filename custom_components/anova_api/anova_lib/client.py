@@ -110,23 +110,40 @@ class AnovaClient:
         stages = raw_state.get("stages", [])
         
         # Determine target to patch (active stage or stage 0)
-        new_stages = copy.deepcopy(stages) if stages else [{
-            "id": str(uuid.uuid4()),
-            "stepType": "stage",
-            "type": "cook",
-            "title": "",
-            "description": "",
-            "do": {
-                "type": "cook",
-                "fan": { "speed": 100 },
-                "heatingElements": { "top": {"on": False}, "bottom": {"on": False}, "rear": {"on": True} },
-                "exhaustVent": { "state": "closed" },
-                "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 175 } } },
-            },
-            "exit": { "conditions": { "and": {} } },
-            "entry": { "conditions": { "and": {} } },
-            "rackPosition": 3
-        }]
+        if stages:
+            new_stages = copy.deepcopy(stages)
+        else:
+            if device.model == "oven_v2":
+                new_stages = [{
+                    "id": str(uuid.uuid4()),
+                    "title": "",
+                    "description": "",
+                    "do": {
+                        "type": "cook",
+                        "fan": { "speed": 100 },
+                        "heatingElements": { "top": {"on": False}, "bottom": {"on": False}, "rear": {"on": True} },
+                        "exhaustVent": { "state": "closed" },
+                        "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 175 } } },
+                    },
+                    "exit": { "conditions": { "and": {} } },
+                    "entry": { "conditions": { "and": {} } },
+                    "rackPosition": 3
+                }]
+            else:
+                new_stages = [{
+                    "id": str(uuid.uuid4()),
+                    "stepType": "stage",
+                    "type": "cook",
+                    "title": "",
+                    "description": "",
+                    "userActionRequired": False,
+                    "fan": { "speed": 100 },
+                    "heatingElements": { "top": {"on": False}, "bottom": {"on": False}, "rear": {"on": True} },
+                    "vent": { "open": False },
+                    "temperatureBulbs": { "mode": "dry", "dry": { "setpoint": { "celsius": 175 } } },
+                    "stageTransitionType": "automatic",
+                    "rackPosition": 3
+                }]
 
         # Patch the active stage (or index 0 if not found)
         # Because Anova v1 and v2 nest differently, we patch both the top-level stage AND the 'do' block if it exists
@@ -142,22 +159,28 @@ class AnovaClient:
         if "do" in target_stage:
             self._deep_update(target_stage["do"], overrides)
 
+        inner_payload = {
+            "cookId": raw_state.get("cookId") or str(uuid.uuid4()),
+            "stages": new_stages
+        }
+        
+        if device.model == "oven_v2":
+            inner_payload.update({
+                "cookerId": device_id,
+                "type": device.model,
+                "originSource": "api",
+                "cookableType": "manual",
+                "cookableId": "",
+                "title": ""
+            })
+
         cmd = {
             "command": "CMD_APO_START",
             "requestId": str(uuid.uuid4()),
             "payload": {
                 "id": device_id,
                 "type": "CMD_APO_START",
-                "payload": {
-                    "cookId": raw_state.get("cookId") or str(uuid.uuid4()),
-                    "cookerId": device_id,
-                    "type": device.model,
-                    "originSource": "api",
-                    "cookableType": "manual",
-                    "cookableId": "",
-                    "title": "",
-                    "stages": new_stages
-                }
+                "payload": inner_payload
             }
         }
         await self.send_command(cmd)
