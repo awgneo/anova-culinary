@@ -81,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "name": "anova-panel",
                 "embed_iframe": False,
                 "trust_external": False,
-                "js_url": "/anova-panel/anova-panel.js"
+                "module_url": "/anova-panel/anova-panel.js"
             },
             require_admin=False,
         )

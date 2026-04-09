@@ -56,6 +56,9 @@ class AnovaOven(ClimateEntity):
             manufacturer="Anova",
             model=model,
         )
+        self._attr_current_temperature = 0.0
+        self._attr_target_temperature = 0.0
+        self._attr_hvac_mode = HVACMode.OFF
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
