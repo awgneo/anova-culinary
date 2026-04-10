@@ -306,7 +306,7 @@ def payload_to_state(raw_payload: dict) -> APOState:
 
     cook = None
     try:
-        cook = payload_cook_to_cook(raw_payload)
+        cook = payload_cook_to_cook(inner)
     except Exception:
         pass
         

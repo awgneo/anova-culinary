@@ -17,7 +17,7 @@ from anova_api.apo import (
 )
 from anova_api.device import AnovaDevice, DeviceType
 
-RAW_V2_PAYLOAD = {
+_INNER_PAYLOAD = {
     'nodes': {
         'wasteWaterTank': {'full': False, 'removed': False}, 
         'temperatureProbe': {'current': {'celsius': 0}, 'ntcConnected': True, 'connected': False}, 
@@ -88,6 +88,12 @@ RAW_V2_PAYLOAD = {
     'state': {'cavityOverheated': False, 'temperatureUnit': 'F', 'mode': 'cook'}, 
     'updatedTimestamp': '2026-04-09T22:44:29.431Z', 
     'version': 2
+}
+
+RAW_V2_PAYLOAD = {
+    "cookerId": "0123d1e411114d5401",
+    "type": "oven_v2",
+    "state": _INNER_PAYLOAD
 }
 
 def test_payload_to_state():
