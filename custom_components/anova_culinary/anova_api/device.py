@@ -15,3 +15,4 @@ class AnovaDevice:
     type: DeviceType
     model: str  # e.g., 'oven_v1', 'oven_v2', 'a3', 'pro'
     name: str = "Unknown Device"
+    friendly_model: str = ""

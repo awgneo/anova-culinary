@@ -30,8 +30,8 @@ async def async_setup_entry(
     for device_id, device in client.devices.items():
         if device.type == DeviceType.APO:
             entities.extend([
-                AnovaOven(client, device_id, device.name, device.model),
-                AnovaProbe(client, device_id, device.name, device.model),
+                AnovaOven(client, device_id, device.name, device.friendly_model),
+                AnovaProbe(client, device_id, device.name, device.friendly_model),
             ])
             
     async_add_entities(entities)

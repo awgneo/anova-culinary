@@ -269,8 +269,9 @@ class AnovaClient:
                 self._devices[device_id] = AnovaDevice(
                     device_id=device_id,
                     type=dev_type,
-                    model=friendly_model,
-                    name=device_name
+                    model=raw_model,
+                    name=device_name,
+                    friendly_model=friendly_model
                 )
                 _LOGGER.info("Discovered %s: %s", dev_type.value, device_id)
                 
