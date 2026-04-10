@@ -15,7 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .anova_lib.client import AnovaClient
-from .anova_lib.models import DeviceType
+from .anova_lib.device import DeviceType
 
 
 async def async_setup_entry(
