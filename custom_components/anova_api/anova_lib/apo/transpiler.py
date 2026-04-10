@@ -156,7 +156,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
     if device.model == "oven_v2":
         inner_payload.update({
             "type": "oven_v2",
-            "originSource": "api",
+            "originSource": "hardware",
             "cookableType": "manual",
             "cookableId": "",
             "title": cook.recipe.title
@@ -164,6 +164,35 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
         
     return inner_payload
 
+def synthesize_cook_from_nodes(nodes: APONodes) -> APOCook:
+    """Reconstruct an active logical cook session from blind physical telemetry."""
+    s = APOStage(id=_generate_uuid())
+    
+    if nodes.temperature_bulbs_mode == "wet":
+        s.sous_vide = True
+        s.temperature = nodes.setpoint_wet_temp
+        s.steam = 100
+    else:
+        s.sous_vide = False
+        s.temperature = nodes.setpoint_dry_temp
+        s.steam = 0
+            
+    if nodes.top_heater_on and nodes.bottom_heater_on:
+        s.heating_elements = APOHeatingElement.TOP_BOTTOM
+    elif nodes.top_heater_on and nodes.rear_heater_on:
+        s.heating_elements = APOHeatingElement.TOP_REAR
+    elif nodes.bottom_heater_on and nodes.rear_heater_on:
+        s.heating_elements = APOHeatingElement.BOTTOM_REAR
+    elif nodes.top_heater_on:
+        s.heating_elements = APOHeatingElement.TOP
+    elif nodes.bottom_heater_on:
+        s.heating_elements = APOHeatingElement.BOTTOM
+    else:
+        s.heating_elements = APOHeatingElement.REAR
+        
+    # Let fan simply default to max, as telemetry doesn't reliably map enum speeds cleanly
+    # And we don't know the exact probe targets if any.
+    return APOCook(recipe=APORecipe(title="Recovery", stages=[s]), active_stage_index=0)
 
 def payload_to_state(raw_payload: dict) -> APOState:
     """Parses raw websocket telemetry into a pristine APOState."""

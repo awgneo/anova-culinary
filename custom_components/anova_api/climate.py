@@ -143,8 +143,13 @@ class AnovaOven(ClimateEntity):
             
         cook = self._client.get_current_cook(self._device_id)
         if not cook or not cook.current_stage:
-            from .anova_lib.apo.models import APOCook, APORecipe, APOStage
-            cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
+            state = self._client.get_apo_state(self._device_id)
+            if state and state.nodes:
+                from .anova_lib.apo.transpiler import synthesize_cook_from_nodes
+                cook = synthesize_cook_from_nodes(state.nodes)
+            else:
+                from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+                cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
             
         cook.current_stage.temperature = temperature
         await self._client.play_cook(self._device_id, cook)
@@ -168,8 +173,13 @@ class AnovaOven(ClimateEntity):
                 
             cook = self._client.get_current_cook(self._device_id)
             if not cook or not cook.current_stage:
-                from .anova_lib.apo.models import APOCook, APORecipe, APOStage
-                cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
+                state = self._client.get_apo_state(self._device_id)
+                if state and state.nodes:
+                    from .anova_lib.apo.transpiler import synthesize_cook_from_nodes
+                    cook = synthesize_cook_from_nodes(state.nodes)
+                else:
+                    from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+                    cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
                 
             cook.current_stage.temperature = targ
             
