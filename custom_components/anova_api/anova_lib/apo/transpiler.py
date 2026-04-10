@@ -104,6 +104,17 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                 }
                 s_dict["exit"]["conditions"]["and"] = {"nodes.temperatureProbe.current.celsius": {">=": stage.advance.target}}
                 
+            else:
+                # The official iOS/Android apps aggressively parse the active "stages" config and silently 
+                # ignore/fail to render stages that entirely lack a 'timer' or 'probe' block inside the 'do' payload.
+                # To maintain bidirectional mobile app UI synchronization on these infinite Home Assistant "bakes",
+                # we inject a massive 24-hour dummy manual timer block.
+                s_dict["do"]["timer"] = {
+                    "initial": 86400,
+                    "startType": "manual"
+                }
+                s_dict["exit"]["conditions"]["and"] = {"nodes.timer.mode": {"=": "completed"}}
+                
             stages.append(s_dict)
             
         else:
