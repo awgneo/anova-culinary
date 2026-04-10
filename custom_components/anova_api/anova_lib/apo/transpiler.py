@@ -11,8 +11,8 @@ from .models import (
 from ..device import AnovaDevice
 
 def _generate_uuid() -> str:
-    """Generate a UUID string suitable for Anova stages."""
-    return str(uuid.uuid4())
+    """Generate a UUID string disguised as an android app structure."""
+    return f"android-{uuid.uuid4()}"
 
 def recipe_to_cook(recipe: APORecipe) -> APOCook:
     """Bootstraps a fresh APOCook runtime proxy from a static Recipe."""
@@ -162,7 +162,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
     if device.model in ("oven", "oven_v2"):
         inner_payload.update({
             "type": device.model,
-            "originSource": "api",
+            "originSource": "android",
             "cookableType": "manual",
             "cookableId": "",
             "title": cook.recipe.title,
