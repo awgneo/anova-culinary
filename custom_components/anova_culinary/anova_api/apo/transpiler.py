@@ -100,10 +100,11 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                 s_dict["exit"]["conditions"]["and"] = {"nodes.timer.mode": {"=": "completed"}}
                 
             elif isinstance(stage.advance, APOProbe):
-                s_dict["do"]["probe"] = {
+                s_dict["do"]["temperatureProbe"] = {
                     "setpoint": {"celsius": stage.advance.target}
                 }
                 s_dict["exit"]["conditions"]["and"] = {"nodes.temperatureProbe.current.celsius": {">=": stage.advance.target}}
+                s_dict["entry"]["conditions"]["and"]["nodes.temperatureProbe.connected"] = {"=": True}
             else:
                 s_dict["exit"]["conditions"]["and"] = {}
                 
@@ -408,14 +409,26 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
         else:
             s.fan = APOFanSpeed.OFF
             
-        # Advance (Timer)
+        # Advance (Timer or Probe)
         timer = block.get("timer", {})
-        if timer:
+        probe = block.get("temperatureProbe", block.get("probe", {}))
+        
+        if probe and "setpoint" in probe:
+            targ = probe.get("setpoint", {}).get("celsius", 55.0)
+            s.advance = APOProbe(target=targ)
+        elif timer:
             # Check v2 triggers
             conds = timer.get("entry", {}).get("conditions", {})
             dur = timer.get("initial", 0)
             
-            if not conds or conds == {"and": {}}:
+            if "startType" in timer:
+                # v1 trigger map
+                t_str = timer["startType"]
+                if t_str == "on-detection": trigger = APOTimerTrigger.FOOD_DETECTED
+                elif t_str == "when-preheated": trigger = APOTimerTrigger.PREHEATED
+                elif t_str == "manual": trigger = APOTimerTrigger.MANUALLY
+                else: trigger = APOTimerTrigger.IMMEDIATELY
+            elif not conds or conds == {"and": {}}:
                 trigger = APOTimerTrigger.IMMEDIATELY
             elif "or" in conds and "nodes.cavityCamera.isEmpty" in conds["or"]:
                 trigger = APOTimerTrigger.FOOD_DETECTED
