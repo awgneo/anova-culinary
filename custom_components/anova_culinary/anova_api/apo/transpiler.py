@@ -75,7 +75,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                     "temperatureBulbs": bulb_dict,
                 },
                 "exit": {"conditions": {"and": {}}},
-                "entry": {"conditions": {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}}
+                "entry": {"conditions": {"and": {}}}
             }
             
             if stage.steam > 0:
@@ -173,7 +173,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
 
 def payload_to_state(raw_payload: dict) -> APOState:
     """Parses raw websocket telemetry into a pristine APOState."""
-    inner = raw_payload.get("payload", raw_payload)
+    inner = raw_payload.get("state", raw_payload.get("payload", raw_payload))
     
     nodes = APONodes()
     if "nodes" in inner:
@@ -326,15 +326,6 @@ def payload_to_state(raw_payload: dict) -> APOState:
         state_str = "idle"
         is_running = bool(inner.get("activeStageId"))
         
-    # Sanity check: In V2 ovens without explicit timer starts, the controller 
-    # sometimes drops back to absolute 'idle' while simultaneously running the physical
-    # heaters. Overlay the physical execution parameters on top of the logical string.
-    if not is_running:
-        if nodes.rear_heater_on or nodes.bottom_heater_on or nodes.top_heater_on:
-            is_running = True
-            if state_str == "idle":
-                state_str = "cooking"
-                
     return APOState(
         is_running=is_running,
         state=state_str,
