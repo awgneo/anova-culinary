@@ -229,6 +229,7 @@ class AnovaClient:
             # Try to identify device by extracting id from payload
             dev_id = payload.get("id") or payload.get("cookerId")
             if dev_id:
+                _LOGGER.debug("Received STATE broadcast for %s: %s", dev_id, payload)
                 if "APC" in cmd:
                     self._update_apc_state(dev_id, payload)
                 elif "APO" in cmd:
@@ -250,11 +251,26 @@ class AnovaClient:
         for dev in payload:
             device_id = dev.get("cookerId")
             if device_id and device_id not in self._devices:
+                raw_model = dev.get("type", "unknown")
+                raw_name = dev.get("name", "")
+                
+                friendly_model = raw_model
+                if raw_model == "oven_v1": friendly_model = "Anova Precision Oven 1.0"
+                elif raw_model == "oven_v2": friendly_model = "Anova Precision Oven 2.0"
+                elif raw_model == "a3": friendly_model = "Anova Precision Cooker"
+                elif raw_model == "pro": friendly_model = "Anova Precision Cooker Pro"
+                elif dev_type == DeviceType.APC: friendly_model = "Anova Precision Cooker"
+                elif dev_type == DeviceType.APO: friendly_model = "Anova Precision Oven"
+                
+                # Replace the name if it is empty, or if they haven't set a custom name in the app 
+                # (meaning the API returns 'oven_v2' statically)
+                device_name = raw_name if raw_name and raw_name != raw_model else friendly_model
+                
                 self._devices[device_id] = AnovaDevice(
                     device_id=device_id,
                     type=dev_type,
-                    model=dev.get("type", "unknown"),
-                    name=dev.get("name", f"Anova {dev_type.value}")
+                    model=friendly_model,
+                    name=device_name
                 )
                 _LOGGER.info("Discovered %s: %s", dev_type.value, device_id)
                 

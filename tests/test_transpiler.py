@@ -155,7 +155,8 @@ def test_recipe_to_cook():
     # Validate UUID generation for missing tracking IDs
     for stage in cook.recipe.stages:
         assert stage.id != ""
-        assert len(stage.id) == 36 # UUID standard
+        assert len(stage.id) == 44 # UUID standard
+        assert stage.id.startswith("android-")
         
     assert len(cook.recipe.stages) == 2
     assert cook.active_stage_id == cook.recipe.stages[0].id
