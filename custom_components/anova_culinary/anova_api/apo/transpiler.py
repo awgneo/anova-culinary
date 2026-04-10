@@ -107,8 +107,9 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
             else:
                 s_dict["exit"]["conditions"]["and"] = {}
                 
-            # For raw manual climate commands, we do not inject blocking entry conditions
-            # because without an paired exit timer, the backend state machine auto-aborts open-ended preheats.
+                # For raw manual climate commands, we do not inject blocking entry conditions
+                # because without an paired exit timer, the backend state machine auto-aborts open-ended preheats.
+                s_dict.pop("entry", None)
                 
             stages.append(s_dict)
             
@@ -173,9 +174,16 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
 
 def payload_to_state(raw_payload: dict) -> APOState:
     """Parses raw websocket telemetry into a pristine APOState."""
+    inner = raw_payload
+    if "nodes" not in inner:
+        if isinstance(inner.get("state"), dict) and "nodes" in inner["state"]:
+            inner = inner["state"]
+        elif isinstance(inner.get("payload"), dict) and "nodes" in inner["payload"]:
+            inner = inner["payload"]
+            
     nodes = APONodes()
-    if "nodes" in raw_payload:
-        n = raw_payload["nodes"]
+    if "nodes" in inner:
+        n = inner["nodes"]
         bulbs = n.get("temperatureBulbs", {})
         nodes.current_dry_temp = bulbs.get("dry", {}).get("current", {}).get("celsius", 0.0)
         nodes.current_wet_temp = bulbs.get("wet", {}).get("current", {}).get("celsius", 0.0)
@@ -304,13 +312,13 @@ def payload_to_state(raw_payload: dict) -> APOState:
 
     cook = None
     try:
-        cook = payload_cook_to_cook(raw_payload)
+        cook = payload_cook_to_cook(inner)
     except Exception:
         pass
         
-    status = raw_payload.get("status")
+    status = inner.get("status")
     if status is None:
-        state_block = raw_payload.get("state")
+        state_block = inner.get("state")
         if isinstance(state_block, dict):
             status = state_block.get("mode")
         else:
@@ -322,17 +330,8 @@ def payload_to_state(raw_payload: dict) -> APOState:
         is_running = state_str.lower() not in ["idle", "stopped", "standby"]
     else:
         state_str = "idle"
-        is_running = bool(raw_payload.get("activeStageId"))
+        is_running = bool(inner.get("activeStageId"))
         
-    # Sanity check: In V2 ovens without explicit timer starts, the controller 
-    # sometimes drops back to absolute 'idle' while simultaneously running the physical
-    # heaters. Overlay the physical execution parameters on top of the logical string.
-    if not is_running:
-        if nodes.rear_heater_on or nodes.bottom_heater_on or nodes.top_heater_on:
-            is_running = True
-            if state_str == "idle":
-                state_str = "cooking"
-                
     return APOState(
         is_running=is_running,
         state=state_str,
