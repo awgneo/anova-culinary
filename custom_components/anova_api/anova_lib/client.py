@@ -118,12 +118,10 @@ class AnovaClient:
         payload_dict = apo.cook_to_payload(cook, device)
         
         cmd = {
-            "command": "CMD_APO_START",
             "requestId": str(uuid.uuid4()),
             "payload": {
-                "id": device_id,
-                "type": "CMD_APO_START",
-                "payload": payload_dict
+                "command": payload_dict,
+                "type": "CMD_APO_START"
             }
         }
         await self.send_command(cmd)

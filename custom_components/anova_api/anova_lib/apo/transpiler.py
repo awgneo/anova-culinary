@@ -157,7 +157,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
     
     if device.model == "oven_v2":
         inner_payload.update({
-            "type": "oven_v2",
+            "type": "oven",
             "originSource": "api",
             "cookableType": "manual",
             "cookableId": "",
