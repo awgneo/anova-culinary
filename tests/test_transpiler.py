@@ -5,17 +5,17 @@ import os
 import pytest
 import json
 
-# Bypass the root anova_api __init__.py so we don't trigger homeassistant core dependencies
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../custom_components/anova_api')))
+# Bypass the root anova_culinary __init__.py so we don't trigger homeassistant core dependencies
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../custom_components/anova_culinary')))
 
-from anova_lib.apo import (
+from anova_api.apo import (
     payload_to_state,
     recipe_to_cook,
     cook_to_payload,
     APORecipe, APOStage, APOTimer, APOTimerTrigger, 
     APOHeatingElement, APOFanSpeed
 )
-from anova_lib.device import AnovaDevice, DeviceType
+from anova_api.device import AnovaDevice, DeviceType
 
 RAW_V2_PAYLOAD = {
     'nodes': {

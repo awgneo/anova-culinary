@@ -20,7 +20,7 @@ sys.modules['homeassistant.components.water_heater'].STATE_ELECTRIC = 'electric'
 sys.modules['homeassistant.const'].UnitOfTemperature = MagicMock()
 
 try:
-    import custom_components.anova_api.water_heater
+    import custom_components.anova_culinary.water_heater
     print("SUCCESS")
 except Exception as e:
     import traceback

@@ -14,8 +14,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
-from .anova_lib.client import AnovaClient
-from .anova_lib.device import DeviceType
+from .anova_api.client import AnovaClient
+from .anova_api.device import DeviceType
 
 
 async def async_setup_entry(
@@ -113,7 +113,8 @@ class AnovaOven(ClimateEntity):
                     self._attr_current_temperature = state.nodes.current_dry_temp
             else:
                 self._active_mode = "dry"
-                self._attr_target_temperature = 0.0
+                # Do NOT overwrite _attr_target_temperature to 0.0. Let it retain memory of the last configuration 
+                # (or initial __init__ payload) so the unified UI components stay perfectly in place!
                 
                 if state.nodes.display_board_celsius > 0:
                     self._attr_current_temperature = state.nodes.display_board_celsius
@@ -144,7 +145,7 @@ class AnovaOven(ClimateEntity):
             
         cook = self._client.get_current_cook(self._device_id)
         if not cook or not cook.current_stage:
-            from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+            from .anova_api.apo.models import APOCook, APORecipe, APOStage
             cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
             
         cook.current_stage.temperature = temperature
@@ -153,15 +154,7 @@ class AnovaOven(ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         if hvac_mode == HVACMode.OFF:
-            cmd = {
-                "command": "CMD_APO_STOP",
-                "requestId": str(uuid.uuid4()),
-                "payload": {
-                    "id": self._device_id,
-                    "type": "CMD_APO_STOP"
-                }
-            }
-            await self._client.send_command(cmd)
+            await self._client.stop_apo_cook(self._device_id)
         elif hvac_mode == HVACMode.HEAT:
             targ = self._attr_target_temperature
             if not targ:  # Catches 0.0 or None
@@ -169,7 +162,7 @@ class AnovaOven(ClimateEntity):
                 
             cook = self._client.get_current_cook(self._device_id)
             if not cook or not cook.current_stage:
-                from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+                from .anova_api.apo.models import APOCook, APORecipe, APOStage
                 cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
                 
             cook.current_stage.temperature = targ
@@ -227,16 +220,14 @@ class AnovaProbe(ClimateEntity):
         try:
             self._attr_current_temperature = state.nodes.current_probe_temp
             if state.cook and state.cook.current_stage:
-                from .anova_lib.apo.models import APOProbe
+                from .anova_api.apo.models import APOProbe
                 adv = state.cook.current_stage.advance
                 if isinstance(adv, APOProbe):
                     self._attr_target_temperature = adv.target
                     self._attr_hvac_mode = HVACMode.HEAT
                 else:
-                    self._attr_target_temperature = 0.0
                     self._attr_hvac_mode = HVACMode.OFF
             else:
-                self._attr_target_temperature = 0.0
                 self._attr_hvac_mode = HVACMode.OFF
         except Exception: pass
         self.async_write_ha_state()
@@ -252,24 +243,24 @@ class AnovaProbe(ClimateEntity):
 
         cook = self._client.get_current_cook(self._device_id)
         if not cook or not cook.current_stage:
-            from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+            from .anova_api.apo.models import APOCook, APORecipe, APOStage
             cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
             
-        from .anova_lib.apo.models import APOProbe
+        from .anova_api.apo.models import APOProbe
         cook.current_stage.advance = APOProbe(target=temperature)
         await self._client.play_cook(self._device_id, cook)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         cook = self._client.get_current_cook(self._device_id)
         
-        from .anova_lib.apo.models import APOProbe
+        from .anova_api.apo.models import APOProbe
         if hvac_mode == HVACMode.OFF:
             if cook and cook.current_stage and isinstance(cook.current_stage.advance, APOProbe):
                 cook.current_stage.advance = None
                 await self._client.play_cook(self._device_id, cook)
         elif hvac_mode == HVACMode.HEAT:
             if not cook or not cook.current_stage:
-                from .anova_lib.apo.models import APOCook, APORecipe, APOStage
+                from .anova_api.apo.models import APOCook, APORecipe, APOStage
                 cook = APOCook(recipe=APORecipe(title="Manual Cook", stages=[APOStage()]), active_stage_index=0)
                 
             targ = self._attr_target_temperature or 55.0

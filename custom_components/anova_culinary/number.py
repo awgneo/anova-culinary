@@ -10,9 +10,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
-from .anova_lib.client import AnovaClient
-from .anova_lib.device import DeviceType
-from .anova_lib.apo.models import APOTimer, APOTimerTrigger
+from .anova_api.client import AnovaClient
+from .anova_api.device import DeviceType
+from .anova_api.apo.models import APOTimer, APOTimerTrigger
 
 
 async def async_setup_entry(

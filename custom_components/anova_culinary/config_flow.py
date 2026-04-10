@@ -8,9 +8,9 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .anova_lib.client import AnovaClient
-from .anova_lib.auth import FirebaseAuthManager
-from .anova_lib.exceptions import AnovaAuthError, AnovaConnectionError
+from .anova_api.client import AnovaClient
+from .anova_api.auth import FirebaseAuthManager
+from .anova_api.exceptions import AnovaAuthError, AnovaConnectionError
 from .const import DOMAIN, CONF_TOKEN
 
 _LOGGER = logging.getLogger(__name__)

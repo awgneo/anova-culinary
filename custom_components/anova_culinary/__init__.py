@@ -3,15 +3,16 @@
 import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import storage
+from homeassistant.helpers.collection import DictStorageCollection, DictStorageCollectionWebsocket
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.panel_custom import async_register_panel
 import asyncio
 import os
 
-from .anova_lib.client import AnovaClient
+from .anova_api.client import AnovaClient
 from .const import DOMAIN, CONF_TOKEN, RECIPE_STORAGE_KEY, RECIPE_STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,8 +25,20 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.SELECT,
-    Platform.BUTTON,
 ]
+
+
+class APORecipeCollection(DictStorageCollection):
+    """Zero introspection pure UUID store array mapping."""
+    async def _process_create_data(self, data: dict) -> dict:
+        return data
+
+    @callback
+    def _get_suggested_id(self, info: dict) -> str:
+        return info.get("name", "recipe")
+
+    async def _update_data(self, item: dict, update_data: dict) -> dict:
+        return {**item, **update_data}
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -58,62 +71,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "recipes": []
     }
 
-    # Setup recipe storage
+    # Setup recipe storage collection
     store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
-    recipes = await store.async_load()
-    if recipes is None:
-        recipes = []
-    hass.data[DOMAIN][entry.entry_id]["recipes"] = recipes
+    collection = APORecipeCollection(store)
+    await collection.async_load()
+
+    hass.data[DOMAIN][entry.entry_id]["recipes"] = collection
+
+    # Register native websockets
+    ws = DictStorageCollectionWebsocket(
+        collection,
+        "anova_culinary/recipes",
+        "recipe",
+        {"name": str, "stages": list},
+        {"name": str, "stages": list}
+    )
+    ws.async_setup(hass)
 
     # Register the custom frontend panel
     # We will serve the panel assets from the www directory
     try:
         www_dir = os.path.join(os.path.dirname(__file__), "www")
         await hass.http.async_register_static_paths([
-            StaticPathConfig("/anova-panel", www_dir, False)
+            StaticPathConfig("/anova-culinary", www_dir, False)
         ])
         await async_register_panel(
             hass,
-            frontend_url_path="anova",
-            webcomponent_name="anova-panel",
+            frontend_url_path="anova-culinary",
+            webcomponent_name="anova-culinary",
             sidebar_title="Anova",
             sidebar_icon="mdi:stove",
-            module_url="/anova-panel/anova-panel.js",
+            module_url="/anova-culinary/panel.js",
             embed_iframe=False,
             require_admin=False,
         )
     except Exception as e:
         _LOGGER.warning("Could not register custom panel: %s", e)
 
-    # Register services
-    async def handle_save_recipe(call):
-        name = call.data["name"]
-        stages = call.data["stages"]
-        recipes = hass.data[DOMAIN][entry.entry_id]["recipes"]
-        
-        # update or append
-        existing = next((r for r in recipes if r["name"] == name), None)
-        if existing:
-            existing["stages"] = stages
-        else:
-            recipes.append({"name": name, "stages": stages})
-            
-        store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
-        await store.async_save(recipes)
-        # Notify select entities to update (we rely on simple polling or reload normally, 
-        # but dispatch would be better in a full refactor)
-        
-    async def handle_delete_recipe(call):
-        name = call.data["name"]
-        recipes = hass.data[DOMAIN][entry.entry_id]["recipes"]
-        filtered = [r for r in recipes if r["name"] != name]
-        hass.data[DOMAIN][entry.entry_id]["recipes"] = filtered
-        
-        store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
-        await store.async_save(filtered)
 
-    hass.services.async_register(DOMAIN, "save_recipe", handle_save_recipe)
-    hass.services.async_register(DOMAIN, "delete_recipe", handle_delete_recipe)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

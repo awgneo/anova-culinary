@@ -1,6 +1,6 @@
 """Constants for the Anova API integration."""
 
-DOMAIN = "anova_api"
+DOMAIN = "anova_culinary"
 
 CONF_TOKEN = "token"
 

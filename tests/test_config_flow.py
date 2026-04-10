@@ -3,8 +3,8 @@
 from unittest.mock import patch
 
 from homeassistant import config_entries
-from custom_components.anova_api.const import DOMAIN
-from custom_components.anova_api.config_flow import validate_input
+from custom_components.anova_culinary.const import DOMAIN
+from custom_components.anova_culinary.config_flow import validate_input
 
 async def test_form_user(hass):
     """Test we get the form."""
@@ -26,13 +26,13 @@ async def test_form_invalid_token(hass):
 async def test_form_valid(hass):
     """Test successful flow."""
     with patch(
-        "custom_components.anova_api.config_flow.AnovaClient.connect", 
+        "custom_components.anova_culinary.config_flow.AnovaClient.connect", 
         return_value=True
     ), patch(
-        "custom_components.anova_api.config_flow.AnovaClient.close",
+        "custom_components.anova_culinary.config_flow.AnovaClient.close",
         return_value=None
     ), patch(
-        "custom_components.anova_api.async_setup_entry",
+        "custom_components.anova_culinary.async_setup_entry",
         return_value=True
     ):
         result = await hass.config_entries.flow.async_init(

@@ -16,9 +16,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
-from .anova_lib.client import AnovaClient
-from .anova_lib.device import DeviceType
-from .anova_lib.apc.models import APCTemperatureUnit
+from .anova_api.client import AnovaClient
+from .anova_api.device import DeviceType
+from .anova_api.apc.models import APCTemperatureUnit
 
 
 async def async_setup_entry(
@@ -104,40 +104,19 @@ class AnovaCooker(WaterHeaterEntity):
         if temperature is None:
             return
 
-        cmd = {
-            "command": "CMD_APC_START",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "cookerId": self._device_id,
-                "type": self._attr_device_info.get("model", "unknown"),
-                "targetTemperature": temperature,
-                "unit": self._attr_temperature_unit,
-                "timer": 3600  # Default 1 hr if modifying via HA natively
-            }
-        }
-        await self._client.send_command(cmd)
-
+        from .anova_api.device import DeviceType
+        await self._client.play_apc_cook(
+            self._device_id,
+            target=temperature,
+            unit=self._attr_temperature_unit
+        )
     async def async_set_operation_mode(self, operation_mode: str) -> None:
         """Set operation mode."""
         if operation_mode == STATE_ELECTRIC:
-            cmd = {
-                "command": "CMD_APC_START",
-                "requestId": str(uuid.uuid4()),
-                "payload": {
-                    "cookerId": self._device_id,
-                    "type": self._attr_device_info.get("model", "unknown"),
-                    "targetTemperature": self._attr_target_temperature or 60,
-                    "unit": self._attr_temperature_unit,
-                    "timer": 3600
-                }
-            }
+            await self._client.play_apc_cook(
+                self._device_id,
+                target=self._attr_target_temperature or 60.0,
+                unit=self._attr_temperature_unit
+            )
         else:
-            cmd = {
-                "command": "CMD_APC_STOP",
-                "requestId": str(uuid.uuid4()),
-                "payload": {
-                    "cookerId": self._device_id,
-                    "type": self._attr_device_info.get("model", "unknown"),
-                }
-            }
-        await self._client.send_command(cmd)
+            await self._client.stop_apc_cook(self._device_id)

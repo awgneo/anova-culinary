@@ -8,9 +8,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
-from .anova_lib.client import AnovaClient
-from .anova_lib.device import DeviceType
-from .anova_lib.apo.models import APOHeatingElement, APOFanSpeed, APOTimerTrigger
+from .anova_api.client import AnovaClient
+from .anova_api.device import DeviceType
+from .anova_api.apo.models import APOHeatingElement, APOFanSpeed, APOTimerTrigger
 
 import hashlib
 import uuid
@@ -45,34 +45,36 @@ class AnovaRecipeSelect(SelectEntity):
     _attr_name = "Recipe"
     _attr_icon = "mdi:chef-hat"
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str, recipes: list) -> None:
+    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str, collection) -> None:
         self._client = client
         self._device_id = device_id
-        self._recipes = recipes
+        self.collection = collection
         self._attr_unique_id = f"anova_apo_{device_id}_recipe_select"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
         
-        self._attr_options = ["None", "Manual / App Cook"] + [r.get("name", "Unnamed") for r in self._recipes]
         self._attr_current_option = "None"
         self._remove_cb = None
-
-    def _hash_recipe_name(self, name: str) -> str:
-        """Create deterministic string identity based on string payload for API mapping."""
-        md5 = hashlib.md5(name.encode('utf-8')).hexdigest()
-        return str(uuid.UUID(md5))
+        self._unsub_collection = None
 
     async def async_added_to_hass(self) -> None:
         self._remove_cb = self._client.register_callback(self._handle_update)
+        
+        async def _async_collection_changed(changeset) -> None:
+            self._handle_update(self._device_id, {})
+            
+        self._unsub_collection = self.collection.async_add_change_set_listener(_async_collection_changed)
         self._handle_update(self._device_id, {})
 
     async def async_will_remove_from_hass(self) -> None:
         if self._remove_cb:
             self._remove_cb()
+        if self._unsub_collection:
+            self._unsub_collection()
 
     @property
     def options(self) -> list[str]:
         """Return dynamically loaded recipe options."""
-        return ["None", "Manual / App Cook"] + [r.get("name", "Unnamed") for r in self._recipes]
+        return ["None", "Manual / App Cook"] + [r.get("name", "Unnamed") for r in self.collection.async_items()]
 
     @callback
     def _handle_update(self, device_id: str, payload: dict) -> None:
@@ -88,12 +90,10 @@ class AnovaRecipeSelect(SelectEntity):
             return
             
         incoming_cook_id = state.cook.cook_id
-        matched_name = "Manual / App Cook"
-        for r in self._recipes:
-            name = r.get("name", "Unnamed")
-            if self._hash_recipe_name(name) == incoming_cook_id:
-                matched_name = name
-                break
+        
+        # Native O(1) dictionary lookups bounded by strict UUID keys!
+        matched_recipe = self.collection.data.get(incoming_cook_id)
+        matched_name = matched_recipe.get("name", "Unnamed") if matched_recipe else "Manual / App Cook"
                 
         if self._attr_current_option != matched_name:
             self._attr_current_option = matched_name
@@ -105,41 +105,20 @@ class AnovaRecipeSelect(SelectEntity):
             # Can't directly start these
             return
 
-        recipe_data = next((r for r in self._recipes if r.get("name") == option), None)
+        recipe_data = next((r for r in self.collection.async_items() if r.get("name") == option), None)
         if not recipe_data: return
         
-        from .anova_lib.apo.models import APOStage, APORecipe, APOCook, APOTimer, APOProbe
-        stgs = []
-        for s_data in recipe_data.get("stages", []):
-            stg = APOStage()
-            stg.sous_vide = s_data.get("sous_vide", False)
-            stg.temperature = float(s_data.get("temperature", 0.0))
-            stg.steam = int(s_data.get("steam", 0))
-            
-            fan_map = {"high": APOFanSpeed.HIGH, "medium": APOFanSpeed.MEDIUM, "low": APOFanSpeed.LOW, "off": APOFanSpeed.OFF}
-            stg.fan = fan_map.get(s_data.get("fanSpeed", "high").lower(), APOFanSpeed.HIGH)
-            
-            h_raw = s_data.get("heatingElements", "rear").lower()
-            if "top" in h_raw and "bottom" in h_raw: stg.heating_elements = APOHeatingElement.TOP_BOTTOM
-            elif "top" in h_raw and "rear" in h_raw: stg.heating_elements = APOHeatingElement.TOP_REAR
-            elif "bottom" in h_raw and "rear" in h_raw: stg.heating_elements = APOHeatingElement.BOTTOM_REAR
-            elif "top" in h_raw: stg.heating_elements = APOHeatingElement.TOP
-            elif "bottom" in h_raw: stg.heating_elements = APOHeatingElement.BOTTOM
-            else: stg.heating_elements = APOHeatingElement.REAR
-            
-            if s_data.get("type") == "timer":
-                dur = int(s_data.get("duration", 0))
-                # Universal schema expects seconds here usually? Wait, anova-panel sets duration in MINUTES? Let's check panel.
-                # Panel actually creates recipes via websocket, wait. We'll assume the frontend sets recipe duration in seconds!
-                # Actually APO timer duration is mostly seconds.
-                stg.advance = APOTimer(duration=dur, trigger=APOTimerTrigger.IMMEDIATELY)
-            elif s_data.get("type") == "probe":
-                stg.advance = APOProbe(target=float(s_data.get("probeTarget", 0.0)))
-                
-            stgs.append(stg)
-            
-        recipe = APORecipe(title=option, stages=stgs)
-        cook = APOCook(recipe=recipe, cook_id=self._hash_recipe_name(option))
+        from .anova_api.apo.models import APORecipe
+        
+        # Hydrate types perfectly using Mashumaro dict mixin
+        recipe = APORecipe.from_dict(recipe_data)
+        
+        from .anova_api.apo.transpiler import recipe_to_cook
+        cook = recipe_to_cook(recipe)
+        
+        # Override the dynamically generated random ID with our explicit stored recipe ID
+        cook.cook_id = recipe.id
+        
         await self._client.play_cook(self._device_id, cook)
 
 
@@ -285,7 +264,7 @@ class AnovaTimerTriggerSelect(SelectEntity):
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
         
-        from .anova_lib.apo.models import APOTimer
+        from .anova_api.apo.models import APOTimer
         try:
             curr_stage = state.cook.current_stage
             if curr_stage and isinstance(curr_stage.advance, APOTimer):
@@ -301,7 +280,7 @@ class AnovaTimerTriggerSelect(SelectEntity):
         cook = self._client.get_current_cook(self._device_id)
         if not cook or not cook.current_stage: return
         
-        from .anova_lib.apo.models import APOTimer
+        from .anova_api.apo.models import APOTimer
         
         t = APOTimerTrigger.MANUALLY
         if option == "Immediately": t = APOTimerTrigger.IMMEDIATELY

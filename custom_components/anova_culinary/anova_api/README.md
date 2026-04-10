@@ -1,6 +1,6 @@
 # Anova API Engine Architecture
 
-The core of the Anova API (`anova_lib`) is driven by a powerful bidirectional Transpiler engine. Because Anova's internal API changes drastically across generations (e.g., `oven_v1` uses flat arrays while `oven_v2` uses deeply nested AST logical condition trees), the Transpiler decouples Home Assistant from the chaos of raw JSON payloads. 
+The core of the Anova API (`anova_api`) is driven by a powerful bidirectional Transpiler engine. Because Anova's internal API changes drastically across generations (e.g., `oven_v1` uses flat arrays while `oven_v2` uses deeply nested AST logical condition trees), the Transpiler decouples Home Assistant from the chaos of raw JSON payloads. 
 
 The integration components (`climate.py`, `switch.py`, etc.) execute simple reads/writes against a pristine, statically-typed python object model (found in `models.py`). The Transpiler sits in between, catching raw web socket JSON from Anova, interpreting it into our python models, and subsequently transforming our python objects back into native Anova websocket strings.
 

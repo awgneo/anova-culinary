@@ -1,6 +1,6 @@
 {
-  "domain": "anova_api",
-  "name": "Anova API",
+  "domain": "anova_culinary",
+  "name": "Anova Culinary",
   "codeowners": ["@awgneo"],
   "config_flow": true,
   "dependencies": [],

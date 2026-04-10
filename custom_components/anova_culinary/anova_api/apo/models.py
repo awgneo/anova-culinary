@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Union
 from enum import Enum
+from mashumaro.mixins.dict import DataClassDictMixin
+from mashumaro import field_options
 
 class APOHeatingElement(str, Enum):
     """Enumeration of valid heating element combinations."""
@@ -39,7 +41,7 @@ class APOTimer:
     trigger: APOTimerTrigger
 
 @dataclass
-class APOStage:
+class APOStage(DataClassDictMixin):
     """Universal schema representing a single state of cooking intent."""
     id: str = ""
     sous_vide: bool = False
@@ -50,9 +52,10 @@ class APOStage:
     advance: Optional[Union[APOTimer, APOProbe]] = None
 
 @dataclass
-class APORecipe:
+class APORecipe(DataClassDictMixin):
     """Static storage entity representing an array of intended stages."""
-    title: str = ""
+    id: str = ""
+    title: str = field(default="", metadata=field_options(alias="name"))
     stages: List[APOStage] = field(default_factory=list)
 
 @dataclass

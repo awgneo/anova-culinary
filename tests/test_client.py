@@ -5,9 +5,9 @@ import json
 import logging
 from unittest.mock import AsyncMock
 
-from custom_components.anova_api.anova_lib.client import AnovaClient
-from custom_components.anova_api.anova_lib.models import DeviceType
-from custom_components.anova_api.anova_lib.exceptions import AnovaConnectionError
+from custom_components.anova_culinary.anova_api.client import AnovaClient
+from custom_components.anova_culinary.anova_api.models import DeviceType
+from custom_components.anova_culinary.anova_api.exceptions import AnovaConnectionError
 
 @pytest.mark.asyncio
 async def test_client_connect(mock_session):

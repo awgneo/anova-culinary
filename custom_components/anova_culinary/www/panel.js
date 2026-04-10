@@ -4,7 +4,7 @@ import {
   css,
 } from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
-class AnovaPanel extends LitElement {
+class AnovaCulinary extends LitElement {
   static get properties() {
     return {
       hass: { type: Object },
@@ -30,18 +30,14 @@ class AnovaPanel extends LitElement {
 
   async _fetchRecipes() {
     if (!this.hass) return;
-    
-    const states = this.hass.states;
-    let names = [];
-    for (const [entityId, stateObj] of Object.entries(states)) {
-      if (entityId.startsWith('select.anova_') && entityId.includes('_recipe')) {
-        names = stateObj.attributes.options || [];
-        break;
-      }
+    try {
+      const data = await this.hass.connection.sendMessagePromise({
+        type: 'anova_culinary/recipes/list'
+      });
+      this.recipes = data;
+    } catch (e) {
+      console.error("Failed fetching WS collection", e);
     }
-    
-    names = names.filter(n => n !== "None");
-    this.recipes = names.map(n => ({ name: n, stages: [] }));
   }
 
   _handleSearch(e) {
@@ -72,52 +68,60 @@ class AnovaPanel extends LitElement {
   _updateStage(index, field, value) {
     if (!this.editingRecipe) return;
     const stage = this.editingRecipe.stages[index];
-    
+
     // Type casting logic
     if (field === "sous_vide") value = (value === "true" || value === true);
     if (field === "temperature") value = parseFloat(value) || 0.0;
     if (field === "steam") value = parseInt(value) || 0;
-    
+
     stage[field] = value;
     this.requestUpdate();
   }
-  
+
   _removeStage(index) {
-     if (!this.editingRecipe) return;
-     this.editingRecipe.stages.splice(index, 1);
-     this.requestUpdate();
+    if (!this.editingRecipe) return;
+    this.editingRecipe.stages.splice(index, 1);
+    this.requestUpdate();
   }
 
   async _saveRecipe() {
     if (!this.editingRecipe) return;
-    
+
     try {
-        await this.hass.callService("anova_api", "save_recipe", {
-          name: this.editingRecipe.name,
-          stages: this.editingRecipe.stages
-        });
-    } catch(e) {
-        console.error("Failed executing HA service call", e);
+      const type = this.editingRecipe.id ? 'anova_culinary/recipes/update' : 'anova_culinary/recipes/create';
+      const payload = {
+        type: type,
+        name: this.editingRecipe.name,
+        stages: this.editingRecipe.stages
+      };
+      if (this.editingRecipe.id) payload.recipe_id = this.editingRecipe.id;
+
+      await this.hass.connection.sendMessagePromise(payload);
+    } catch (e) {
+      console.error("Failed executing HA WS call", e);
     }
-    
+
     this.editingRecipe = null;
-    setTimeout(() => this._fetchRecipes(), 1000);
+    this._fetchRecipes();
   }
 
-  async _deleteRecipe(name) {
+  async _deleteRecipe(id, name) {
     try {
-        await this.hass.callService("anova_api", "delete_recipe", { name });
-    } catch(e) {
-        console.error("Failed executing HA service call", e);
+      await this.hass.connection.sendMessagePromise({
+        type: 'anova_culinary/recipes/delete',
+        recipe_id: id
+      });
+    } catch (e) {
+      console.error("Failed executing HA WS call", e);
     }
-    setTimeout(() => this._fetchRecipes(), 1000);
+    this._fetchRecipes();
   }
 
   render() {
     if (this.editingRecipe) {
       return this.renderEditor();
     }
-    
+
     const filtered = this.recipes.filter(r => r.name.toLowerCase().includes(this.searchQuery));
 
     return html`
@@ -148,7 +152,7 @@ class AnovaPanel extends LitElement {
                   </div>
                   <div class="action-group">
                     <button class="btn-ghost" @click=${() => this._startEdit(r)}>Edit</button>
-                    <button class="btn-danger" @click=${() => this._deleteRecipe(r.name)}>
+                    <button class="btn-danger" @click=${() => this._deleteRecipe(r.id, r.name)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
                   </div>
@@ -606,4 +610,4 @@ class AnovaPanel extends LitElement {
     `;
   }
 }
-customElements.define("anova-panel", AnovaPanel);
+customElements.define("anova-culinary", AnovaCulinary);

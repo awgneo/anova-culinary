@@ -136,6 +136,54 @@ class AnovaClient:
         }
         await self.send_command(cmd)
 
+    async def stop_apo_cook(self, device_id: str):
+        """Halt operation of an APO device."""
+        cmd = {
+            "command": "CMD_APO_STOP",
+            "requestId": str(uuid.uuid4()),
+            "payload": {
+                "id": device_id,
+                "type": "CMD_APO_STOP"
+            }
+        }
+        await self.send_command(cmd)
+
+    async def play_apc_cook(self, device_id: str, target: float, unit: str, timer: int = 3600):
+        """Start operation of an APC device."""
+        device = self._devices.get(device_id)
+        if not device or device.type != DeviceType.APC:
+            return
+            
+        cmd = {
+            "command": "CMD_APC_START",
+            "requestId": str(uuid.uuid4()),
+            "payload": {
+                "cookerId": device_id,
+                "type": device.model,
+                "targetTemperature": target,
+                "unit": unit,
+                "timer": timer
+            }
+        }
+        await self.send_command(cmd)
+
+    async def stop_apc_cook(self, device_id: str):
+        """Halt operation of an APC device."""
+        device = self._devices.get(device_id)
+        if not device or device.type != DeviceType.APC:
+            return
+            
+        cmd = {
+            "command": "CMD_APC_STOP",
+            "requestId": str(uuid.uuid4()),
+            "payload": {
+                "cookerId": device_id,
+                "type": device.model,
+            }
+        }
+        await self.send_command(cmd)
+
+
     async def _listen(self):
         """Listen to websocket messages."""
         if not self._ws:
