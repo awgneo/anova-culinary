@@ -86,16 +86,24 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                 
             if isinstance(stage.advance, APOTimer):
                 trigger_cond = None
+                s_type = "immediately"
+                
                 if stage.advance.trigger == APOTimerTrigger.PREHEATED:
                     trigger_cond = {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}
+                    s_type = "when-preheated"
                 elif stage.advance.trigger == APOTimerTrigger.MANUALLY:
                     trigger_cond = {"and": {"userAction": {"=": True}}}
+                    s_type = "manual"
                 elif stage.advance.trigger == APOTimerTrigger.FOOD_DETECTED:
                     trigger_cond = {"or": {"userAction": {"=": True}, "nodes.cavityCamera.isEmpty": {"=": False}}}
+                    s_type = "manual"  # App treats this similarly when falling back
                 
                 s_dict["do"]["timer"] = {
-                    "initial": stage.advance.duration
+                    "initial": stage.advance.duration,
+                    "startType": s_type
                 }
+                
+                # Maintain exact V2 specificAST grouping
                 if trigger_cond is not None:
                     s_dict["do"]["timer"]["entry"] = {"conditions": trigger_cond}
                     
