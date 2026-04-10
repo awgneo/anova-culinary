@@ -16,7 +16,8 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .anova_lib.client import AnovaClient
-from .anova_lib.models import DeviceType, TemperatureUnit
+from .anova_lib.device import DeviceType
+from .anova_lib.apc.models import APCTemperatureUnit
 
 
 async def async_setup_entry(
@@ -84,7 +85,7 @@ class AnovaCooker(WaterHeaterEntity):
         self._attr_current_temperature = state.current_temperature
         self._attr_target_temperature = state.target_temperature
         
-        if state.unit == TemperatureUnit.C:
+        if state.unit == APCTemperatureUnit.C:
             self._attr_temperature_unit = UnitOfTemperature.CELSIUS
         else:
             self._attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
