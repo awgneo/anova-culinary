@@ -107,10 +107,6 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
             else:
                 s_dict["exit"]["conditions"]["and"] = {}
                 
-                # For raw manual climate commands, we do not inject blocking entry conditions
-                # because without an paired exit timer, the backend state machine auto-aborts open-ended preheats.
-                s_dict.pop("entry", None)
-                
             stages.append(s_dict)
             
         else:

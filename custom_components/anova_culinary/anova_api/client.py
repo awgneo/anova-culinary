@@ -119,6 +119,10 @@ class AnovaClient:
 
     async def play_cook(self, device_id: str, cook: APOCook):
         """Skinny network wrapper for transmitting an APOCook transpiled payload."""
+        state = self.get_apo_state(device_id)
+        if state and state.cook and state.is_running and state.cook.cook_id == cook.cook_id:
+            return await self.update_cook(device_id, cook)
+            
         device = self._devices.get(device_id)
         if not device or device.type != DeviceType.APO:
             return
@@ -132,6 +136,27 @@ class AnovaClient:
                 "id": device_id,
                 "type": "CMD_APO_START",
                 "payload": payload_dict
+            }
+        }
+        await self.send_command(cmd)
+
+    async def update_cook(self, device_id: str, cook: APOCook):
+        """Update active cook stages natively."""
+        device = self._devices.get(device_id)
+        if not device or device.type != DeviceType.APO:
+            return
+            
+        payload_dict = apo.cook_to_payload(cook, device)
+        
+        cmd = {
+            "command": "CMD_APO_UPDATE_COOK_STAGES",
+            "requestId": str(uuid.uuid4()),
+            "payload": {
+                "id": device_id,
+                "type": "CMD_APO_UPDATE_COOK_STAGES",
+                "payload": {
+                    "stages": payload_dict.get("stages", [])
+                }
             }
         }
         await self.send_command(cmd)
