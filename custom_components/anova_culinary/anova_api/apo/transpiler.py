@@ -85,18 +85,20 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                 }
                 
             if isinstance(stage.advance, APOTimer):
-                trigger_cond = {"and": {}}
+                trigger_cond = None
                 if stage.advance.trigger == APOTimerTrigger.PREHEATED:
                     trigger_cond = {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}
                 elif stage.advance.trigger == APOTimerTrigger.MANUALLY:
-                    trigger_cond = {"or": {"userAction": {"=": True}}}
+                    trigger_cond = {"and": {"userAction": {"=": True}}}
                 elif stage.advance.trigger == APOTimerTrigger.FOOD_DETECTED:
-                    trigger_cond = {"or": {"nodes.cavityCamera.isEmpty": {"=": False}}}
+                    trigger_cond = {"or": {"userAction": {"=": True}, "nodes.cavityCamera.isEmpty": {"=": False}}}
                 
                 s_dict["do"]["timer"] = {
-                    "initial": stage.advance.duration,
-                    "entry": {"conditions": trigger_cond}
+                    "initial": stage.advance.duration
                 }
+                if trigger_cond is not None:
+                    s_dict["do"]["timer"]["entry"] = {"conditions": trigger_cond}
+                    
                 s_dict["exit"]["conditions"]["and"] = {"nodes.timer.mode": {"=": "completed"}}
                 
             elif isinstance(stage.advance, APOProbe):
