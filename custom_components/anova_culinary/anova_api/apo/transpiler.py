@@ -284,6 +284,9 @@ def payload_to_state(raw_payload: dict) -> APOState:
         nodes.timer_initial = timer.get("initial", 0)
         nodes.timer_mode = timer.get("mode", "idle")
         
+        display_board = n.get("displayBoard", {})
+        nodes.display_board_celsius = display_board.get("celsius", 0.0)
+        
         nodes.door_closed = n.get("door", {}).get("closed", True)
         nodes.door_lamp_on = n.get("doorLamp", {}).get("on", False)
         nodes.door_lamp_preferences = n.get("doorLamp", {}).get("preferences", "on")
@@ -411,10 +414,16 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
             # Check v2 triggers
             conds = timer.get("entry", {}).get("conditions", {})
             dur = timer.get("initial", 0)
-            trigger = APOTimerTrigger.MANUALLY
-            if "or" in conds:
-                if "nodes.cavityCamera.isEmpty" in conds["or"]:
-                    trigger = APOTimerTrigger.FOOD_DETECTED
+            
+            if not conds:
+                trigger = APOTimerTrigger.IMMEDIATELY
+            elif "or" in conds and "nodes.cavityCamera.isEmpty" in conds["or"]:
+                trigger = APOTimerTrigger.FOOD_DETECTED
+            elif "and" in conds and any("nodes.temperatureBulbs" in k for k in conds["and"]):
+                trigger = APOTimerTrigger.PREHEATED
+            else:
+                trigger = APOTimerTrigger.MANUALLY
+                
             s.advance = APOTimer(duration=dur, trigger=trigger)
 
         universal_stages.append(s)

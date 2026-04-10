@@ -104,10 +104,7 @@ class AnovaOven(ClimateEntity):
                 self._active_mode = "wet" if curr_stage.sous_vide else "dry"
                 self._attr_target_temperature = curr_stage.temperature
                 
-                # Default current temp to strictly match display board if possible to accurately mimic UI sync
-                if state.nodes.display_board_celsius > 0:
-                    self._attr_current_temperature = state.nodes.display_board_celsius
-                elif self._active_mode == "wet":
+                if self._active_mode == "wet":
                     self._attr_current_temperature = state.nodes.current_wet_temp
                 else:
                     self._attr_current_temperature = state.nodes.current_dry_temp
@@ -116,10 +113,7 @@ class AnovaOven(ClimateEntity):
                 # Do NOT overwrite _attr_target_temperature to 0.0. Let it retain memory of the last configuration 
                 # (or initial __init__ payload) so the unified UI components stay perfectly in place!
                 
-                if state.nodes.display_board_celsius > 0:
-                    self._attr_current_temperature = state.nodes.display_board_celsius
-                else:
-                    self._attr_current_temperature = state.nodes.current_dry_temp
+                self._attr_current_temperature = state.nodes.current_dry_temp
         except Exception:
             pass
             
