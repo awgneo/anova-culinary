@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Link Anova Account",
+        "description": "Enter your Anova Culinary account details to connect your appliances (Precision Cooker, Precision Oven).",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid email or password",
+      "cannot_connect": "Failed to connect to Anova services",
+      "unknown": "An unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This Anova account is already configured."
+    }
+  }
+}

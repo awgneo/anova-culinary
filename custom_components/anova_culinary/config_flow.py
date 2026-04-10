@@ -30,7 +30,6 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
     """
     email = data.get("email")
     password = data.get("password")
-    
     session = async_get_clientsession(hass)
 
     # User provided native login, fetch the Firebase refresh token
@@ -55,7 +54,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
         await client.close()
 
     # Return info to store in the entry
-    return {"title": "Anova WiFi Devices", "token": token}
+    return {"title": "Anova Culinary", "token": token}
 
 
 class AnovaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
