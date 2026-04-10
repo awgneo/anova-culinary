@@ -99,12 +99,8 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
             else:
                 s_dict["exit"]["conditions"]["and"] = {}
                 
-            # Formulate the explicit preheat condition used securely by Android platform API logic
-            if stage.sous_vide:
-                stage_entry_cond = {"nodes.temperatureBulbs.wet.current.celsius": {">=": stage.temperature}}
-            else:
-                stage_entry_cond = {"nodes.temperatureBulbs.dry.current.celsius": {">=": stage.temperature}}
-            s_dict["entry"]["conditions"]["and"] = stage_entry_cond
+            # For raw manual climate commands, we do not inject blocking entry conditions
+            # because without an paired exit timer, the backend state machine auto-aborts open-ended preheats.
                 
             stages.append(s_dict)
             
