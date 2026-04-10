@@ -415,7 +415,7 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
             conds = timer.get("entry", {}).get("conditions", {})
             dur = timer.get("initial", 0)
             
-            if not conds:
+            if not conds or conds == {"and": {}}:
                 trigger = APOTimerTrigger.IMMEDIATELY
             elif "or" in conds and "nodes.cavityCamera.isEmpty" in conds["or"]:
                 trigger = APOTimerTrigger.FOOD_DETECTED
