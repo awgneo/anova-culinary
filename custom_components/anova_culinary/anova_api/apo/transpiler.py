@@ -75,7 +75,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                     "temperatureBulbs": bulb_dict,
                 },
                 "exit": {"conditions": {"and": {}}},
-                "entry": {"conditions": {"and": {}}}
+                "entry": {"conditions": {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}}
             }
             
             if stage.steam > 0:
@@ -173,11 +173,9 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
 
 def payload_to_state(raw_payload: dict) -> APOState:
     """Parses raw websocket telemetry into a pristine APOState."""
-    inner = raw_payload.get("state", raw_payload.get("payload", raw_payload))
-    
     nodes = APONodes()
-    if "nodes" in inner:
-        n = inner["nodes"]
+    if "nodes" in raw_payload:
+        n = raw_payload["nodes"]
         bulbs = n.get("temperatureBulbs", {})
         nodes.current_dry_temp = bulbs.get("dry", {}).get("current", {}).get("celsius", 0.0)
         nodes.current_wet_temp = bulbs.get("wet", {}).get("current", {}).get("celsius", 0.0)
@@ -306,13 +304,13 @@ def payload_to_state(raw_payload: dict) -> APOState:
 
     cook = None
     try:
-        cook = payload_cook_to_cook(inner)
+        cook = payload_cook_to_cook(raw_payload)
     except Exception:
         pass
         
-    status = inner.get("status")
+    status = raw_payload.get("status")
     if status is None:
-        state_block = inner.get("state")
+        state_block = raw_payload.get("state")
         if isinstance(state_block, dict):
             status = state_block.get("mode")
         else:
@@ -324,8 +322,17 @@ def payload_to_state(raw_payload: dict) -> APOState:
         is_running = state_str.lower() not in ["idle", "stopped", "standby"]
     else:
         state_str = "idle"
-        is_running = bool(inner.get("activeStageId"))
+        is_running = bool(raw_payload.get("activeStageId"))
         
+    # Sanity check: In V2 ovens without explicit timer starts, the controller 
+    # sometimes drops back to absolute 'idle' while simultaneously running the physical
+    # heaters. Overlay the physical execution parameters on top of the logical string.
+    if not is_running:
+        if nodes.rear_heater_on or nodes.bottom_heater_on or nodes.top_heater_on:
+            is_running = True
+            if state_str == "idle":
+                state_str = "cooking"
+                
     return APOState(
         is_running=is_running,
         state=state_str,
