@@ -241,191 +241,209 @@ class AnovaCulinary extends LitElement {
     const filtered = this.recipes.filter(r => r.name.toLowerCase().includes(this.searchQuery));
 
     return html`
-      <div class="app-background">
-          <div class="glass-container">
-            <div class="header">
-              <h1>Recipes</h1>
-              <div class="action-group">
-                <button class="btn-secondary" @click=${this._triggerFileImport}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Import Recipe
-                </button>
-                <button class="btn-primary glow" @click=${this._startCreate}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                  New Recipe
-                </button>
+      <div class="page">
+        <div class="toolbar">
+          <div class="search-bar">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" placeholder="Search recipes..." @input=${this._handleSearch} .value=${this.searchQuery} />
+          </div>
+          <div class="action-group">
+            <button class="mwc-button" @click=${this._triggerFileImport}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import Recipe
+            </button>
+            <button class="mwc-button primary" @click=${this._startCreate}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              New Recipe
+            </button>
+          </div>
+        </div>
+
+        <div class="content">
+          ${this.activeCook ? html`
+            <div class="active-cook-banner slide-in">
+              <div class="banner-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               </div>
+              <div class="banner-text">
+                <h3>Active Cook Detected</h3>
+                <p>Your oven is currently running a multi-stage cook. Extract and save it to your recipes library?</p>
+              </div>
+              <button class="mwc-button primary" @click=${this._importCook}>
+                Import Recipe
+              </button>
+            </div>
+          ` : ''}
+
+          <div class="data-table">
+            <div class="table-header">
+              <div class="col" style="flex:2; padding-left:16px;">Entity / Recipe</div>
+              <div class="col" style="flex:1;">Status</div>
+              <div class="col" style="flex:1;">Stages</div>
+              <div class="col" style="width:160px; text-align:right; padding-right:16px;">Actions</div>
             </div>
             
-            <div class="search-bar">
-              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input type="text" placeholder="Search recipes..." @input=${this._handleSearch} .value=${this.searchQuery} />
-            </div>
-
-            ${this.activeCook ? html`
-              <div class="active-cook-banner slide-in">
-                <div class="banner-icon">
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                </div>
-                <div class="banner-text">
-                  <h3>Active Cook Detected</h3>
-                  <p>Your oven is currently running a multi-stage cook. Extract and save it to your recipes library?</p>
-                </div>
-                <button class="btn-primary glow" style="margin-left:auto;" @click=${this._importCook}>
-                  Import Recipe
-                </button>
-              </div>
-            ` : ''}
-
-            <ul class="recipe-list">
-              ${filtered.length === 0 ? html`<div class="empty-state">No recipes found. Create one to begin.</div>` : ''}
-              ${filtered.map(r => html`
-                <li class="recipe-item slide-in">
-                  <div class="recipe-info">
-                      <div class="recipe-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 16v-4M12 8h.01"/></svg>
-                      </div>
-                      <span class="recipe-name">${r.name}</span>
+            ${filtered.length === 0 ? html`<div class="empty-state">No recipes found.</div>` : ''}
+            ${filtered.map(r => html`
+              <div class="table-row slide-in">
+                <div class="col" style="flex:2; padding-left:16px; font-weight:500; display:flex; align-items:center; gap:16px;">
+                  <div class="type-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 16v-4M12 8h.01"/></svg>
                   </div>
-                  <div class="action-group">
-                    <button class="btn-ghost" @click=${() => this._startEdit(r)}>Edit</button>
-                    <button class="btn-ghost" style="padding:6px;" @click=${() => this._exportRecipe(r)} title="Export JSON">
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  ${r.name}
+                </div>
+                <div class="col" style="flex:1; color:var(--secondary-text-color);">Ready</div>
+                <div class="col" style="flex:1; color:var(--secondary-text-color);">${r.stages ? r.stages.length : 0} defined</div>
+                <div class="col" style="width:160px; text-align:right; padding-right:16px;">
+                  <div class="row-actions">
+                    <button class="icon-btn" @click=${() => this._startEdit(r)} title="Edit">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    <button class="btn-danger" @click=${() => this._deleteRecipe(r.id, r.name)}>
+                    <button class="icon-btn" @click=${() => this._exportRecipe(r)} title="Export JSON">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button class="icon-btn danger" @click=${() => this._deleteRecipe(r.id, r.name)} title="Delete">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
                   </div>
-                </li>
-              `)}
-            </ul>
+                </div>
+              </div>
+            `)}
           </div>
+        </div>
       </div>
     `;
   }
 
   renderEditor() {
     return html`
-      <div class="app-background">
-          <div class="glass-container">
-            <div class="header">
-              <h1>${!this.editingRecipe.id ? "Create Recipe" : "Edit Recipe"}</h1>
-              <div class="action-group">
-                <button class="btn-ghost" @click=${() => { this.editingRecipe = null; }}>Discard</button>
-                <button class="btn-primary glow" @click=${this._saveRecipe}>Save Recipe</button>
+      <div class="page">
+        <div class="toolbar">
+           <div class="toolbar-title">
+             <div class="type-icon" style="margin-right:16px;">
+                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 16v-4M12 8h.01"/></svg>
+             </div>
+             ${!this.editingRecipe.id ? "Create Recipe" : "Edit Recipe"}
+           </div>
+           <div class="action-group">
+             <button class="mwc-button" @click=${() => { this.editingRecipe = null; }}>Cancel</button>
+             <button class="mwc-button primary" @click=${this._saveRecipe}>Save Recipe</button>
+           </div>
+        </div>
+
+        <div class="content" style="max-width:900px; margin: 0 auto; padding-top: 24px;">
+            <div class="ha-card form-card">
+              <div class="card-content">
+                  <div class="form-group hero-input">
+                      <label>NAME</label>
+                      <input type="text" .value=${this.editingRecipe.name} @input=${e => this.editingRecipe.name = e.target.value} placeholder="e.g. Perfect Medium Rare Ribeye" />
+                  </div>
               </div>
-            </div>
-            
-            <div class="form-group hero-input">
-                <label>NAME</label>
-                <input type="text" .value=${this.editingRecipe.name} @input=${e => this.editingRecipe.name = e.target.value} placeholder="e.g. Perfect Medium Rare Ribeye" />
             </div>
             
             <div class="stages-header">
                 <h3>Stages</h3>
-                <button class="btn-secondary" @click=${this._addStage}>+ Add Stage</button>
+                <button class="mwc-button outline" @click=${this._addStage}>+ Add Stage</button>
             </div>
             
-            <div class="stages-grid">
-                ${this.editingRecipe.stages.map((stage, i) => html`
-                <div class="stage-card pop-in">
-                    <div class="stage-card-header">
-                        <span class="stage-badge">Stage ${i + 1}</span>
-                        <button class="btn-icon-danger" @click=${() => this._removeStage(i)} title="Remove Stage">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                        </button>
+            ${this.editingRecipe.stages.map((stage, i) => html`
+            <div class="ha-card form-card pop-in">
+                <div class="card-header">
+                    <div class="stage-badge">Stage ${i + 1}</div>
+                    <button class="icon-btn danger" @click=${() => this._removeStage(i)} title="Remove Stage">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                
+                <div class="card-content stage-grid-inner">
+                    <div class="form-group">
+                        <label>MODE</label>
+                        <select .value=${stage.sous_vide ? "true" : "false"} @change=${e => this._updateStage(i, 'sous_vide', e.target.value)}>
+                            <option value="false">Dry Roasting</option>
+                            <option value="true">Sous Vide</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>TEMPERATURE</label>
+                        <div style="position:relative; display:flex;">
+                          <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="width:100%; padding-right:45px;" />
+                          <span class="unit">°${this._getGlobalUnit()}</span>
+                        </div>
                     </div>
                     
-                    <div class="stage-grid-inner">
-                        <div class="form-group">
-                            <label>MODE</label>
-                            <select .value=${stage.sous_vide ? "true" : "false"} @change=${e => this._updateStage(i, 'sous_vide', e.target.value)}>
-                                <option value="false">Dry Roasting</option>
-                                <option value="true">Sous Vide</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>TEMPERATURE</label>
-                            <div style="position:relative; display:flex;">
-                              <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="width:100%; padding-right:45px;" />
-                              <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600; pointer-events:none;">°${this._getGlobalUnit()}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>STEAM (%)</label>
-                            <input type="number" min="0" max="100" .value=${stage.steam} @input=${e => this._updateStage(i, 'steam', e.target.value)} .disabled=${stage.sous_vide} />
-                        </div>
-
-                        <div class="form-group">
-                            <label>HEATING ELEMENTS</label>
-                            <select .value=${stage.heating_elements} @change=${e => this._updateStage(i, 'heating_elements', e.target.value)}>
-                                <option value="top">Top</option>
-                                <option value="rear">Rear</option>
-                                <option value="bottom">Bottom</option>
-                                <option value="top+rear">Top + Rear</option>
-                                <option value="bottom+rear">Bottom + Rear</option>
-                                <option value="top+bottom">Top + Bottom</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>FAN SPEED</label>
-                            <select .value=${stage.fan} @change=${e => this._updateStage(i, 'fan', e.target.value)}>
-                                <option value="off">Off</option>
-                                <option value="low">Low</option>
-                                <option value="medium">Medium</option>
-                                <option value="high">High</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label>TRANSITION (TIMER/PROBE)</label>
-                            <select .value=${stage.advance === null ? "none" : (stage.advance.target !== undefined ? "probe" : "timer")} @change=${e => this._updateAdvance(i, 'type', e.target.value)}>
-                                <option value="none">Manual Transition</option>
-                                <option value="timer">Timer</option>
-                                <option value="probe">Food Probe</option>
-                            </select>
-                        </div>
-
-                        ${stage.advance && stage.advance.duration !== undefined ? html`
-                        <div class="form-group slide-in">
-                            <label>TIMER DURATION (MIN)</label>
-                            <input type="number" step="1" .value=${Math.floor(stage.advance.duration / 60)} @input=${e => this._updateAdvance(i, 'duration_mins', e.target.value)} />
-                        </div>
-                        <div class="form-group slide-in">
-                            <label>TIMER TRIGGER</label>
-                            <select .value=${stage.advance.trigger} @change=${e => this._updateAdvance(i, 'trigger', e.target.value)}>
-                                <option value="immediately">Immediately</option>
-                                <option value="manually">Manually</option>
-                                <option value="preheated">When Preheated</option>
-                                <option value="food_detected">On Food Detected</option>
-                            </select>
-                        </div>
-                        ` : ''}
-
-                        ${stage.advance && stage.advance.target !== undefined ? html`
-                        <div class="form-group slide-in">
-                            <label>PROBE TARGET</label>
-                            <div style="position:relative; display:flex;">
-                              <input type="number" step="0.1" .value=${stage.advance.target} @input=${e => this._updateAdvance(i, 'target', e.target.value)} style="width:100%; padding-right:45px;" />
-                              <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600; pointer-events:none;">°${this._getGlobalUnit()}</span>
-                            </div>
-                        </div>
-                        ` : ''}
-
+                    <div class="form-group">
+                        <label>STEAM (%)</label>
+                        <input type="number" min="0" max="100" .value=${stage.steam} @input=${e => this._updateStage(i, 'steam', e.target.value)} .disabled=${stage.sous_vide} />
                     </div>
+
+                    <div class="form-group">
+                        <label>HEATING ELEMENTS</label>
+                        <select .value=${stage.heating_elements} @change=${e => this._updateStage(i, 'heating_elements', e.target.value)}>
+                            <option value="top">Top</option>
+                            <option value="rear">Rear</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="top+rear">Top + Rear</option>
+                            <option value="bottom+rear">Bottom + Rear</option>
+                            <option value="top+bottom">Top + Bottom</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>FAN SPEED</label>
+                        <select .value=${stage.fan} @change=${e => this._updateStage(i, 'fan', e.target.value)}>
+                            <option value="off">Off</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>TRANSITION (TIMER/PROBE)</label>
+                        <select .value=${stage.advance === null ? "none" : (stage.advance.target !== undefined ? "probe" : "timer")} @change=${e => this._updateAdvance(i, 'type', e.target.value)}>
+                            <option value="none">Manual Transition</option>
+                            <option value="timer">Timer</option>
+                            <option value="probe">Food Probe</option>
+                        </select>
+                    </div>
+
+                    ${stage.advance && stage.advance.duration !== undefined ? html`
+                    <div class="form-group slide-in">
+                        <label>TIMER DURATION (MIN)</label>
+                        <input type="number" step="1" .value=${Math.floor(stage.advance.duration / 60)} @input=${e => this._updateAdvance(i, 'duration_mins', e.target.value)} />
+                    </div>
+                    <div class="form-group slide-in">
+                        <label>TIMER TRIGGER</label>
+                        <select .value=${stage.advance.trigger} @change=${e => this._updateAdvance(i, 'trigger', e.target.value)}>
+                            <option value="immediately">Immediately</option>
+                            <option value="manually">Manually</option>
+                            <option value="preheated">When Preheated</option>
+                            <option value="food_detected">On Food Detected</option>
+                        </select>
+                    </div>
+                    ` : ''}
+
+                    ${stage.advance && stage.advance.target !== undefined ? html`
+                    <div class="form-group slide-in">
+                        <label>PROBE TARGET</label>
+                        <div style="position:relative; display:flex;">
+                          <input type="number" step="0.1" .value=${stage.advance.target} @input=${e => this._updateAdvance(i, 'target', e.target.value)} style="width:100%; padding-right:45px;" />
+                          <span class="unit">°${this._getGlobalUnit()}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+
                 </div>
-                `)}
             </div>
+            `)}
             
-            ${this.editingRecipe.stages.length === 0 ? html`<div class="empty-state">No stages defined. Your oven won't know what to do!</div>` : ''}
-            
-          </div>
+            ${this.editingRecipe.stages.length === 0 ? html`<div class="empty-state">No stages defined.</div>` : ''}
+        </div>
       </div>
     `;
   }
+
 
   static get styles() {
     return css`
