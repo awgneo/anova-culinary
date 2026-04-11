@@ -1,141 +1,244 @@
-<svg id="anova-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
-                <defs>
-                    <!-- Background Dark Gradients -->
-                    <linearGradient id="hexBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#242834"/>
-                        <stop offset="50%" stop-color="#151820"/>
-                        <stop offset="100%" stop-color="#0A0C11"/>
-                    </linearGradient>
-                    <linearGradient id="hexBorder" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#4A5568" stop-opacity="0.8"/>
-                        <stop offset="100%" stop-color="#1A202C" stop-opacity="0.8"/>
-                    </linearGradient>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="anova-logo-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 245.05 263.72">
+  <!-- Generator: Adobe Illustrator 30.2.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 1)  -->
+  <defs>
+    <style>
+      .st0, .st1, .st2, .st3, .st4, .st5 {
+        fill: none;
+      }
 
-                    <!-- Glowing Color Gradients -->
-                    <linearGradient id="anovaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#FFCA28"/>
-                        <stop offset="40%" stop-color="#FF9800"/>
-                        <stop offset="100%" stop-color="#FF3D00"/>
-                    </linearGradient>
-                    
-                    <linearGradient id="waterFrontGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.85"/>
-                        <stop offset="40%" stop-color="#0088FF" stop-opacity="0.6"/>
-                        <stop offset="100%" stop-color="#001144" stop-opacity="0.2"/>
-                    </linearGradient>
+      .st6 {
+        filter: url(#blur12);
+        opacity: .6;
+      }
 
-                    <linearGradient id="waterBackGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#00AAFF" stop-opacity="0.6"/>
-                        <stop offset="50%" stop-color="#0044BB" stop-opacity="0.4"/>
-                        <stop offset="100%" stop-color="#000033" stop-opacity="0.1"/>
-                    </linearGradient>
+      .st6, .st7, .st1, .st8, .st9, .st2, .st10, .st11, .st12, .st13, .st14, .st15 {
+        isolation: isolate;
+      }
 
-                    <!-- Radial Heat Glow -->
-                    <radialGradient id="heatGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#FF3D00" stop-opacity="0.9"/>
-                        <stop offset="50%" stop-color="#FF7300" stop-opacity="0.4"/>
-                        <stop offset="100%" stop-color="#FF3D00" stop-opacity="0"/>
-                    </radialGradient>
+      .st7 {
+        filter: url(#blur25);
+        opacity: .7;
+      }
 
-                    <!-- Glass Reflection Gradient -->
-                    <linearGradient id="glassGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.15"/>
-                        <stop offset="30%" stop-color="#FFFFFF" stop-opacity="0.05"/>
-                        <stop offset="30.1%" stop-color="#FFFFFF" stop-opacity="0"/>
-                        <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
-                    </linearGradient>
+      .st1 {
+        stroke: #fff;
+      }
 
-                    <!-- Glow Filters -->
-                    <filter id="glow5" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="5" result="blur"/>
-                        <feMerge>
-                            <feMergeNode in="blur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                    </filter>
-                    
-                    <filter id="glow15" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="15" result="blur"/>
-                        <feMerge>
-                            <feMergeNode in="blur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                    </filter>
-                    
-                    <filter id="blur12" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="12"/>
-                    </filter>
+      .st1, .st8, .st10 {
+        opacity: .8;
+      }
 
-                    <filter id="blur25" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="25"/>
-                    </filter>
+      .st1, .st2, .st16, .st3, .st4, .st5 {
+        stroke-miterlimit: 2.88;
+      }
 
-                    <!-- Hexagon Clip Path to contain water -->
-                    <clipPath id="hexClip">
-                        <path d="M 200 45 L 334.2 122.5 L 334.2 277.5 L 200 355 L 65.8 277.5 L 65.8 122.5 Z"/>
-                    </clipPath>
-                </defs>
+      .st1, .st3 {
+        stroke-width: .72px;
+      }
 
-                <!-- 1. Background Hexagon with Shadow -->
-                <path d="M 200 45 L 334.2 122.5 L 334.2 277.5 L 200 355 L 65.8 277.5 L 65.8 122.5 Z" fill="#000000" filter="url(#blur12)" opacity="0.6" transform="translate(0, 10)"/>
-                <path d="M 200 45 L 334.2 122.5 L 334.2 277.5 L 200 355 L 65.8 277.5 L 65.8 122.5 Z" fill="url(#hexBgGrad)" stroke="url(#hexBorder)" stroke-width="6" stroke-linejoin="round"/>
+      .st8, .st9 {
+        fill: aqua;
+      }
 
-                <!-- 2. Tech / Integration Lines Background -->
-                <g opacity="0.15" fill="none" stroke="#00E5FF" stroke-width="1.5">
-                    <!-- Circuit Paths -->
-                    <path d="M 200 45 L 200 90"/>
-                    <path d="M 120 150 L 160 150 L 180 170"/>
-                    <path d="M 280 150 L 240 150 L 220 170"/>
-                    <circle cx="120" cy="150" r="3" fill="#00E5FF"/>
-                    <circle cx="280" cy="150" r="3" fill="#00E5FF"/>
-                    <!-- Background target rings -->
-                    <circle cx="200" cy="200" r="110" stroke-width="1" stroke-dasharray="4 8"/>
-                </g>
+      .st9, .st12 {
+        opacity: .3;
+      }
 
-                <!-- 3. Submerged Elements & Water Waves (Clipped to Hexagon) -->
-                <g clip-path="url(#hexClip)">
-                    <!-- Back Wave Phase -->
-                    <path d="M 60 210 Q 110 240, 155 210 T 245 210 T 340 210 L 340 360 L 60 360 Z" fill="url(#waterBackGrad)"/>
-                    
-                    <!-- Intensive Heat Glow in the Water under the Anova Wand -->
-                    <ellipse cx="200" cy="270" rx="80" ry="30" fill="url(#heatGlow)" filter="url(#blur12)" opacity="0.8"/>
+      .st17 {
+        fill: url(#linear-gradient2);
+      }
 
-                    <!-- Front Wave Phase -->
-                    <path d="M 60 220 Q 110 190, 155 220 T 245 220 T 340 220 L 340 360 L 60 360 Z" fill="url(#waterFrontGrad)"/>
-                    
-                    <!-- Glowing Rim of the Front Wave -->
-                    <path d="M 60 220 Q 110 190, 155 220 T 245 220 T 340 220" fill="none" stroke="#00FFFF" stroke-width="2" filter="url(#glow5)" opacity="0.9"/>
-                    <path d="M 60 220 Q 110 190, 155 220 T 245 220 T 340 220" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.8"/>
+      .st18 {
+        fill: url(#linear-gradient3);
+      }
 
-                    <!-- Rising Bubbles in the water -->
-                    <g fill="#FFFFFF">
-                        <circle cx="120" cy="310" r="3.5" opacity="0.3"/>
-                        <circle cx="135" cy="270" r="2" opacity="0.5"/>
-                        <circle cx="105" cy="250" r="2.5" opacity="0.4"/>
-                        <circle cx="170" cy="285" r="8" opacity="0.3" fill="#00FFFF"/>
-                        <circle cx="170" cy="285" r="4" opacity="0.8" fill="#00FFFF"/>
-                        <circle cx="185" cy="255" r="2" opacity="0.5"/>
-                        <circle cx="215" cy="290" r="3" opacity="0.4"/>
-                        <circle cx="230" cy="245" r="4.5" opacity="0.3"/>
-                        <circle cx="275" cy="320" r="3" opacity="0.4"/>
-                        <circle cx="290" cy="260" r="2.5" opacity="0.5"/>
-                    </g>
-                </g>
+      .st19 {
+        fill: url(#linear-gradient5);
+      }
 
-                <!-- 4. The Prominent Anova 'A' (The Sous Vide Device) -->
-                <!-- Ambient Orange Core Glow -->
-                <path d="M 177.5 100 L 222.5 100 L 285 280 L 240 280 L 200 164.8 L 160 280 L 115 280 Z" fill="#FF5722" filter="url(#blur25)" opacity="0.7"/>
-                
-                <!-- Tight Neon Glow -->
-                <path d="M 177.5 100 L 222.5 100 L 285 280 L 240 280 L 200 164.8 L 160 280 L 115 280 Z" fill="#FF9800" filter="url(#blur12)" opacity="0.9"/>
-                
-                <!-- Main Bold Path -->
-                <path d="M 177.5 100 L 222.5 100 L 285 280 L 240 280 L 200 164.8 L 160 280 L 115 280 Z" fill="url(#anovaGrad)"/>
+      .st20 {
+        fill: url(#linear-gradient4);
+      }
 
-                <!-- 6. Foreground Premium Gloss / Glass Edge -->
-                <!-- Full Hexagon Diagonal Reflection -->
-                <path d="M 200 45 L 334.2 122.5 L 334.2 277.5 L 200 355 L 65.8 277.5 L 65.8 122.5 Z" fill="url(#glassGrad)" pointer-events="none"/>
-                
-                <!-- Bright Cyan Inner Rim Highlight (Top Left to Right) -->
-                <path d="M 65.8 122.5 L 200 45 L 334.2 122.5" fill="none" stroke="#00E5FF" stroke-width="1.5" opacity="0.4" pointer-events="none"/>
-            </svg>
+      .st2, .st16, .st3, .st4 {
+        stroke: #00e5ff;
+      }
+
+      .st2, .st16, .st4 {
+        stroke-width: 1.08px;
+      }
+
+      .st2, .st15 {
+        opacity: .4;
+      }
+
+      .st16 {
+        fill: #00e5ff;
+      }
+
+      .st21 {
+        fill: url(#radial-gradient);
+      }
+
+      .st22 {
+        fill: url(#linear-gradient);
+        stroke: url(#linear-gradient1);
+        stroke-linejoin: round;
+        stroke-width: 4.32px;
+      }
+
+      .st23 {
+        fill: #ff5722;
+      }
+
+      .st24 {
+        fill: #ff9800;
+      }
+
+      .st3 {
+        stroke-dasharray: 2.88 5.76;
+      }
+
+      .st25 {
+        opacity: .15;
+      }
+
+      .st5 {
+        stroke: aqua;
+        stroke-width: 1.44px;
+      }
+
+      .st10 {
+        filter: url(#blur121);
+      }
+
+      .st11 {
+        filter: url(#blur122);
+      }
+
+      .st11, .st13 {
+        opacity: .9;
+      }
+
+      .st26 {
+        clip-path: url(#clippath);
+      }
+
+      .st12, .st14, .st15 {
+        fill: #fff;
+      }
+
+      .st13 {
+        filter: url(#glow5);
+      }
+
+      .st14 {
+        opacity: .5;
+      }
+    </style>
+    <filter id="blur12" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <linearGradient id="linear-gradient" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#242834"/>
+      <stop offset=".5" stop-color="#151820"/>
+      <stop offset="1" stop-color="#0a0c11"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient1" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a5568" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#1a202c" stop-opacity=".8"/>
+    </linearGradient>
+    <clipPath id="clippath">
+      <polygon class="st0" points="122.23 20.26 218.85 76.06 218.85 187.66 122.23 243.46 25.61 187.66 25.61 76.06 122.23 20.26"/>
+    </clipPath>
+    <linearGradient id="linear-gradient2" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(4410.25 41454.28) scale(201.6 -118.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0af" stop-opacity=".6"/>
+      <stop offset=".5" stop-color="#04b" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#003" stop-opacity=".1"/>
+    </linearGradient>
+    <filter id="blur121" data-name="blur12" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <radialGradient id="radial-gradient" cx="-21.27" cy="347.36" fx="-21.27" fy="347.36" r=".5" gradientTransform="translate(2572.53 15188.31) scale(115.2 -43.2)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff3d00" stop-opacity=".9"/>
+      <stop offset=".5" stop-color="#ff7300" stop-opacity=".4"/>
+      <stop offset="1" stop-color="#ff3d00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="linear-gradient3" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(4410.25 38956.88) scale(201.6 -111.6)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00e5ff" stop-opacity=".85"/>
+      <stop offset=".4" stop-color="#08f" stop-opacity=".6"/>
+      <stop offset="1" stop-color="#014" stop-opacity=".2"/>
+    </linearGradient>
+    <filter id="glow5" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur result="blur" stdDeviation="5"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="blur25" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="25"/>
+    </filter>
+    <filter id="blur122" data-name="blur12" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+    <linearGradient id="linear-gradient4" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(2725.67 45142.8) scale(122.4 -129.6)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffca28"/>
+      <stop offset=".4" stop-color="#ff9800"/>
+      <stop offset="1" stop-color="#ff3d00"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient5" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity=".15"/>
+      <stop offset=".3" stop-color="#fff" stop-opacity=".05"/>
+      <stop offset=".3" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g class="st6">
+    <polygon points="122.23 27.46 218.85 83.26 218.85 194.86 122.23 250.66 25.61 194.86 25.61 83.26 122.23 27.46"/>
+  </g>
+  <path class="st22" d="M122.23,20.26l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6L122.23,20.26Z"/>
+  <g class="st25">
+    <path class="st4" d="M122.23,20.26v32.4"/>
+    <path class="st4" d="M64.63,95.86h28.8l14.4,14.4"/>
+    <path class="st4" d="M179.83,95.86h-28.8l-14.4,14.4"/>
+    <circle class="st16" cx="64.63" cy="95.86" r="2.16"/>
+    <circle class="st16" cx="179.83" cy="95.86" r="2.16"/>
+    <circle class="st3" cx="122.23" cy="131.86" r="79.2"/>
+  </g>
+  <g class="st26">
+    <g>
+      <path class="st17" d="M21.43,139.06c24,14.4,46.8,14.4,68.4,0s43.2-14.4,64.8,0,44.4,14.4,68.4,0v108H21.43v-108Z"/>
+      <g class="st10">
+        <ellipse class="st21" cx="122.23" cy="182.26" rx="57.6" ry="21.6"/>
+      </g>
+      <path class="st18" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0v100.8H21.43v-100.8Z"/>
+      <g class="st13">
+        <path class="st5" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
+      </g>
+      <path class="st1" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
+      <g>
+        <circle class="st12" cx="64.63" cy="211.06" r="2.52"/>
+        <circle class="st14" cx="75.43" cy="182.26" r="1.44"/>
+        <circle class="st15" cx="53.83" cy="167.86" r="1.8"/>
+        <circle class="st9" cx="100.63" cy="193.06" r="5.76"/>
+        <circle class="st8" cx="100.63" cy="193.06" r="2.88"/>
+        <circle class="st14" cx="111.43" cy="171.46" r="1.44"/>
+        <circle class="st15" cx="133.03" cy="196.66" r="2.16"/>
+        <circle class="st12" cx="143.83" cy="164.26" r="3.24"/>
+        <circle class="st15" cx="176.23" cy="218.26" r="2.16"/>
+        <circle class="st14" cx="187.03" cy="175.06" r="1.8"/>
+      </g>
+    </g>
+  </g>
+  <g class="st7">
+    <polygon class="st23" points="106.03 59.86 138.43 59.86 183.43 189.46 151.03 189.46 122.23 106.52 93.43 189.46 61.03 189.46 106.03 59.86"/>
+  </g>
+  <g class="st11">
+    <polygon class="st24" points="106.03 59.86 138.43 59.86 183.43 189.46 151.03 189.46 122.23 106.52 93.43 189.46 61.03 189.46 106.03 59.86"/>
+  </g>
+  <path class="st20" d="M106.03,59.86h32.4l45,129.6h-32.4l-28.8-82.94-28.8,82.94h-32.4L106.03,59.86Z"/>
+  <path class="st19" d="M122.23,20.26l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6L122.23,20.26Z" pointer-events="none"/>
+  <path class="st2" d="M25.61,76.06L122.23,20.26l96.62,55.8" pointer-events="none"/>
+</svg>
