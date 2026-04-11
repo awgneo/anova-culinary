@@ -68,9 +68,7 @@ class AnovaProbeSensor(SensorEntity):
         state = self._client.get_apo_state(self._device.id)
         if state:
             try:
-                payload = state.raw_state.get("payload", {})
-                probe_data = payload.get("temperatureProbe") or payload.get("probe", {})
-                probe_temp = probe_data.get("current", {}).get("celsius")
+                probe_temp = state.nodes.current_probe_temp
                 if probe_temp is not None:
                     self._attr_native_value = float(probe_temp)
                     self.async_write_ha_state()
@@ -113,9 +111,9 @@ class AnovaTimerSensor(SensorEntity):
             return
             
         state = self._client.get_apo_state(self._device.id) or self._client.get_apc_state(self._device.id)
-        if state and hasattr(state, 'raw_state'):
+        if state:
             try:
-                timer = state.raw_state.get("payload", {}).get("timer", {}).get("remaining")
+                timer = state.nodes.timer_remaining
                 if timer is not None:
                     self._attr_native_value = int(timer)
                     self.async_write_ha_state()

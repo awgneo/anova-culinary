@@ -293,6 +293,7 @@ def payload_to_state(raw_payload: dict) -> AnovaPOState:
         
         timer = n.get("timer", {})
         nodes.timer_initial = timer.get("initial", 0)
+        nodes.timer_remaining = timer.get("remaining", 0)
         nodes.timer_mode = timer.get("mode", "idle")
         
         display_board = n.get("displayBoard", {})
@@ -346,8 +347,7 @@ def payload_to_state(raw_payload: dict) -> AnovaPOState:
         is_running=is_running,
         state=state_str,
         nodes=nodes,
-        cook=cook,
-        raw_state=raw_payload
+        cook=cook
     )
 
 def payload_cook_to_cook(raw_payload: dict) -> AnovaPOCook:

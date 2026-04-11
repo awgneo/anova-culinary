@@ -172,6 +172,7 @@ class AnovaPONodes:
     
     # Logic & State
     timer_initial: int = 0
+    timer_remaining: int = 0
     timer_mode: str = "idle"
     door_closed: bool = True
     door_lamp_on: bool = False
@@ -192,6 +193,3 @@ class AnovaPOState:
     state: str = "idle"
     nodes: AnovaPONodes = field(default_factory=AnovaPONodes)
     cook: Optional[AnovaPOCook] = None
-    
-    # Track the raw telemetry payload only for pure debugging if necessary.
-    raw_state: Dict[str, Any] = field(default_factory=dict)
