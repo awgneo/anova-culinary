@@ -6,7 +6,7 @@ from enum import Enum
 from mashumaro.mixins.dict import DataClassDictMixin
 from mashumaro import field_options
 
-class APOHeatingElement(str, Enum):
+class AnovaPOHeatingElement(str, Enum):
     """Enumeration of valid heating element combinations."""
     TOP = "top"
     REAR = "rear"
@@ -15,14 +15,14 @@ class APOHeatingElement(str, Enum):
     BOTTOM_REAR = "bottom+rear"
     TOP_BOTTOM = "top+bottom"
 
-class APOFanSpeed(str, Enum):
+class AnovaPOFanSpeed(str, Enum):
     """Enumeration of valid fan speeds."""
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     OFF = "off"
 
-class APOTimerTrigger(str, Enum):
+class AnovaPOTimerTrigger(str, Enum):
     """Enumeration of valid timer starts."""
     FOOD_DETECTED = "food_detected"
     IMMEDIATELY = "immediately"
@@ -30,51 +30,52 @@ class APOTimerTrigger(str, Enum):
     MANUALLY = "manually"
 
 @dataclass
-class APOProbe:
+class AnovaPOProbe:
     """Universal schema for a stage's probe transition constraint."""
     target: float
 
 @dataclass
-class APOTimer:
+class AnovaPOTimer:
     """Universal schema for a stage's timer transition constraint."""
     duration: int
-    trigger: APOTimerTrigger
+    trigger: AnovaPOTimerTrigger
 
 @dataclass
-class APOStage(DataClassDictMixin):
+class AnovaPOStage(DataClassDictMixin):
     """Universal schema representing a single state of cooking intent."""
     id: str = ""
     sous_vide: bool = False
     temperature: float = 0.0
+    temperature_unit: str = "C"
     steam: int = 0
-    heating_elements: APOHeatingElement = APOHeatingElement.REAR
-    fan: APOFanSpeed = APOFanSpeed.HIGH
-    advance: Optional[Union[APOTimer, APOProbe]] = None
+    heating_elements: AnovaPOHeatingElement = AnovaPOHeatingElement.REAR
+    fan: AnovaPOFanSpeed = AnovaPOFanSpeed.HIGH
+    advance: Optional[Union[AnovaPOTimer, AnovaPOProbe]] = None
 
 @dataclass
-class APORecipe(DataClassDictMixin):
+class AnovaPORecipe(DataClassDictMixin):
     """Static storage entity representing an array of intended stages."""
     id: str = ""
     title: str = field(default="", metadata=field_options(alias="name"))
-    stages: List[APOStage] = field(default_factory=list)
+    stages: List[AnovaPOStage] = field(default_factory=list)
 
 @dataclass
-class APOCook:
+class AnovaPOCook:
     """Live runtime state packaging a currently executing APORecipe."""
-    recipe: APORecipe = field(default_factory=APORecipe)
+    recipe: AnovaPORecipe = field(default_factory=AnovaPORecipe)
     cook_id: str = ""
     active_stage_index: int = 0
     active_stage_id: str = ""
 
     @property
-    def current_stage(self) -> Optional[APOStage]:
+    def current_stage(self) -> Optional[AnovaPOStage]:
         """Convenience property to fetch the active stage using the index."""
         if 0 <= self.active_stage_index < len(self.recipe.stages):
             return self.recipe.stages[self.active_stage_index]
         return None
 
 @dataclass
-class APONodes:
+class AnovaPONodes:
     """The physical reality of the oven hardware right now."""
     # Temperatures
     current_dry_temp: float = 0.0
@@ -183,12 +184,12 @@ class APONodes:
     cavity_camera_enabled: bool = True
 
 @dataclass
-class APOState:
+class AnovaPOState:
     """Current state of a Precision Oven."""
     is_running: bool = False
     state: str = "idle"
-    nodes: APONodes = field(default_factory=APONodes)
-    cook: Optional[APOCook] = None
+    nodes: AnovaPONodes = field(default_factory=AnovaPONodes)
+    cook: Optional[AnovaPOCook] = None
     
     # Track the raw telemetry payload only for pure debugging if necessary.
     raw_state: Dict[str, Any] = field(default_factory=dict)

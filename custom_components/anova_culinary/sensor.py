@@ -7,9 +7,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .anova_api.client import AnovaClient
-from .anova_api.device import DeviceType
+from .anova_api.device import AnovaDevice
+from .anova_api.product import AnovaProduct
 
 
 async def async_setup_entry(
@@ -21,13 +22,13 @@ async def async_setup_entry(
     client: AnovaClient = hass.data[DOMAIN][entry.entry_id]["client"]
     entities = []
     for device_id, device in client.devices.items():
-        if device.type == DeviceType.APO:
+        if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaProbeSensor(client, device_id, device.name, device.model),
-                AnovaTimerSensor(client, device_id, device.name, device.model),
+                AnovaProbeSensor(client, device),
+                AnovaTimerSensor(client, device),
             ])
-        elif device.type == DeviceType.APC:
-            entities.append(AnovaTimerSensor(client, device_id, device.name, device.model))
+        elif device.product == AnovaProduct.APC:
+            entities.append(AnovaTimerSensor(client, device))
             
     async_add_entities(entities)
 
@@ -41,11 +42,16 @@ class AnovaProbeSensor(SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
-        self._device_id = device_id
-        self._attr_unique_id = f"anova_apo_{device_id}_probe"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_probe"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
@@ -56,15 +62,17 @@ class AnovaProbeSensor(SensorEntity):
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
-        if device_id != self._device_id:
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id:
             return
-        state = self._client.get_apo_state(self._device_id)
+        state = self._client.get_apo_state(self._device.id)
         if state:
             try:
-                probe_temp = state.raw_state.get("payload", {}).get("probe", {}).get("current", {}).get("celsius")
+                payload = state.raw_state.get("payload", {})
+                probe_data = payload.get("temperatureProbe") or payload.get("probe", {})
+                probe_temp = probe_data.get("current", {}).get("celsius")
                 if probe_temp is not None:
-                    self._attr_native_value = probe_temp
+                    self._attr_native_value = float(probe_temp)
                     self.async_write_ha_state()
             except Exception:
                 pass
@@ -80,11 +88,16 @@ class AnovaTimerSensor(SensorEntity):
     _attr_native_unit_of_measurement = UnitOfTime.SECONDS
     _attr_icon = "mdi:timer-outline"
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
-        self._device_id = device_id
-        self._attr_unique_id = f"anova_{device_id}_timer"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_timer"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
@@ -95,16 +108,16 @@ class AnovaTimerSensor(SensorEntity):
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
-        if device_id != self._device_id:
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id:
             return
             
-        state = self._client.get_apo_state(self._device_id) or self._client.get_apc_state(self._device_id)
+        state = self._client.get_apo_state(self._device.id) or self._client.get_apc_state(self._device.id)
         if state and hasattr(state, 'raw_state'):
             try:
                 timer = state.raw_state.get("payload", {}).get("timer", {}).get("remaining")
                 if timer is not None:
-                    self._attr_native_value = timer
+                    self._attr_native_value = int(timer)
                     self.async_write_ha_state()
             except Exception:
                 pass

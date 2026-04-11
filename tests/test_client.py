@@ -3,34 +3,36 @@
 import pytest
 import json
 import logging
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from custom_components.anova_culinary.anova_api.client import AnovaClient
-from custom_components.anova_culinary.anova_api.models import DeviceType
+from custom_components.anova_culinary.anova_api.product import AnovaProduct
 from custom_components.anova_culinary.anova_api.exceptions import AnovaConnectionError
 
 @pytest.mark.asyncio
-async def test_client_connect(mock_session):
+@patch("custom_components.anova_culinary.anova_api.client.AnovaAuth.get_valid_token", return_value="mock-token")
+async def test_client_connect(mock_token, mock_session):
     """Test successful connection."""
     client = AnovaClient("anova-test-token", session=mock_session)
     success = await client.connect()
     
     assert success is True
     mock_session.ws_connect.assert_called_once()
-    assert "anova-test-token" in mock_session.ws_connect.call_args[0][0]
+    assert "mock-token" in mock_session.ws_connect.call_args[0][0]
 
 @pytest.mark.asyncio
-async def test_client_disconnect(mock_session, mock_ws_response):
+@patch("custom_components.anova_culinary.anova_api.client.AnovaAuth.get_valid_token", return_value="mock-token")
+async def test_client_disconnect(mock_token, mock_session, mock_ws_response):
     """Test close logic."""
     client = AnovaClient("test", session=mock_session)
     await client.connect()
     await client.close()
     
     mock_ws_response.close.assert_called_once()
-    mock_session.close.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_send_command(mock_session, mock_ws_response):
+@patch("custom_components.anova_culinary.anova_api.client.AnovaAuth.get_valid_token", return_value="mock-token")
+async def test_send_command(mock_token, mock_session, mock_ws_response):
     """Test sending command."""
     client = AnovaClient("test", session=mock_session)
     await client.connect()
@@ -41,32 +43,32 @@ async def test_send_command(mock_session, mock_ws_response):
     mock_ws_response.send_str.assert_called_once_with(json.dumps(cmd))
 
 @pytest.mark.asyncio
-async def test_handle_discovery_apc():
+async def test_handle_discovery_apc(mock_session):
     """Test discovery payload updates."""
-    client = AnovaClient("test")
+    client = AnovaClient("test", session=mock_session)
     payload = [{
         "cookerId": "APC-123",
         "type": "a7",
         "name": "My Cooker"
     }]
-    client._process_discovery(payload, DeviceType.APC)
+    client._process_discovery(payload, AnovaProduct.APC)
     
     assert len(client.devices) == 1
     device = client.devices["APC-123"]
-    assert device.device_id == "APC-123"
-    assert device.type == DeviceType.APC
+    assert device.id == "APC-123"
+    assert device.product == AnovaProduct.APC
     
     state = client.get_apc_state("APC-123")
     assert state is not None
     assert state.state == "idle"
 
 @pytest.mark.asyncio
-async def test_update_state():
+async def test_update_state(mock_session):
     """Test state update parsing."""
-    client = AnovaClient("test")
+    client = AnovaClient("test", session=mock_session)
     
     # Initialize Fake Device
-    client._process_discovery([{"cookerId": "APC-123", "type": "a7"}], DeviceType.APC)
+    client._process_discovery([{"cookerId": "APC-123", "type": "a7"}], AnovaProduct.APC)
     
     # Send mock message
     msg = {

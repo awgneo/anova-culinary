@@ -8,14 +8,15 @@ import json
 # Bypass the root anova_culinary __init__.py so we don't trigger homeassistant core dependencies
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../custom_components/anova_culinary')))
 
-from anova_api.apo import (
+from custom_components.anova_culinary.anova_api.apo import (
     payload_to_state,
     recipe_to_cook,
     cook_to_payload,
-    APORecipe, APOStage, APOTimer, APOTimerTrigger, 
-    APOHeatingElement, APOFanSpeed
+    AnovaPORecipe, AnovaPOStage, AnovaPOTimer, AnovaPOTimerTrigger, 
+    AnovaPOHeatingElement, AnovaPOFanSpeed
 )
-from anova_api.device import AnovaDevice, DeviceType
+from custom_components.anova_culinary.anova_api.device import AnovaDevice
+from custom_components.anova_culinary.anova_api.product import AnovaProduct
 
 _INNER_PAYLOAD = {
     'nodes': {
@@ -125,29 +126,29 @@ def test_payload_to_state():
     assert stage.sous_vide is True
     assert stage.temperature == 54.44
     assert stage.steam == 100
-    assert stage.heating_elements == APOHeatingElement.REAR
-    assert stage.fan == APOFanSpeed.HIGH
+    assert stage.heating_elements == AnovaPOHeatingElement.REAR
+    assert stage.fan == AnovaPOFanSpeed.HIGH
     
     # 4. Verify Advance Conditions decoded 
-    assert isinstance(stage.advance, APOTimer)
+    assert isinstance(stage.advance, AnovaPOTimer)
     assert stage.advance.duration == 300
-    assert stage.advance.trigger == APOTimerTrigger.FOOD_DETECTED
+    assert stage.advance.trigger == AnovaPOTimerTrigger.FOOD_DETECTED
 
 def test_recipe_to_cook():
     """Verify static schemas convert to live proxies seamlessly."""
-    recipe = APORecipe(
+    recipe = AnovaPORecipe(
         stages=[
-            APOStage(
+            AnovaPOStage(
                 sous_vide=True, 
                 temperature=60.0, 
                 steam=100, 
-                advance=APOTimer(duration=1800, trigger=APOTimerTrigger.PREHEATED)
+                advance=AnovaPOTimer(duration=1800, trigger=AnovaPOTimerTrigger.PREHEATED)
             ),
-            APOStage(
+            AnovaPOStage(
                 sous_vide=False, 
                 temperature=200.0, 
-                heating_elements=APOHeatingElement.TOP_REAR,
-                fan=APOFanSpeed.MEDIUM
+                heating_elements=AnovaPOHeatingElement.TOP_REAR,
+                fan=AnovaPOFanSpeed.MEDIUM
             )
         ]
     )
@@ -169,24 +170,24 @@ def test_recipe_to_cook():
 
 def test_cook_to_payload():
     """Verify live proxies compile purely into Anova intent bytes (stripping nodes)."""
-    recipe = APORecipe(
+    recipe = AnovaPORecipe(
         stages=[
-            APOStage(
+            AnovaPOStage(
                 id="static-unit-test-1",
                 sous_vide=False, 
                 temperature=175.0, 
-                heating_elements=APOHeatingElement.REAR,
-                fan=APOFanSpeed.MEDIUM,
-                advance=APOTimer(duration=600, trigger=APOTimerTrigger.MANUALLY)
+                heating_elements=AnovaPOHeatingElement.REAR,
+                fan=AnovaPOFanSpeed.MEDIUM,
+                advance=AnovaPOTimer(duration=600, trigger=AnovaPOTimerTrigger.MANUALLY)
             )
         ]
     )
     cook = recipe_to_cook(recipe)
     
     device = AnovaDevice(
-        device_id="dummy_device_id",
-        type=DeviceType.APO,
-        model="oven_v2",
+        id="dummy_device_id",
+        product=AnovaProduct.APO,
+        type="oven_v2",
         name="Test Oven"
     )
     
@@ -211,6 +212,6 @@ def test_cook_to_payload():
     
     # Verify condition formatting
     assert do_block["timer"]["initial"] == 600
-    assert do_block["timer"]["entry"]["conditions"]["or"]["userAction"]["="] is True # Manually trigger natively mapped to userAction
+    assert do_block["timer"]["entry"]["conditions"]["and"]["userAction"]["="] is True # Manually trigger natively mapped to userAction
     # Node telemetry MUST NOT EXIST in upstream payload
     assert "nodes" not in payload

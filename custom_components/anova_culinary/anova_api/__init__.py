@@ -1,9 +1,9 @@
 """Anova WiFi device protocol library."""
 
 from .client import AnovaClient
-from .device import AnovaDevice, DeviceType
-from .apc import APCState, APCTemperatureUnit, TimerState
-from .apo import APOState
+from .device import AnovaDevice, AnovaProduct
+from .apc import AnovaPCState, AnovaPCTemperatureUnit, AnovaPCTimerState
+from .apo import AnovaPOState
 from .exceptions import (
     AnovaException,
     AnovaAuthError,
@@ -15,11 +15,11 @@ from .exceptions import (
 __all__ = [
     "AnovaClient",
     "AnovaDevice",
-    "APCState",
-    "APOState",
-    "DeviceType",
-    "APCTemperatureUnit",
-    "TimerState",
+    "AnovaPCState",
+    "AnovaPOState",
+    "AnovaProduct",
+    "AnovaPCTemperatureUnit",
+    "AnovaPCTimerState",
     "AnovaException",
     "AnovaAuthError",
     "AnovaConnectionError",

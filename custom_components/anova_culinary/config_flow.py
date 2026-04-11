@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .anova_api.client import AnovaClient
-from .anova_api.auth import FirebaseAuthManager
+from .anova_api.auth import AnovaAuth
 from .anova_api.exceptions import AnovaAuthError, AnovaConnectionError
 from .const import DOMAIN, CONF_TOKEN
 
@@ -34,7 +34,7 @@ async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
 
     # User provided native login, fetch the Firebase refresh token
     try:
-        auth_data = await FirebaseAuthManager.login(session, email, password)
+        auth_data = await AnovaAuth.login(session, email, password)
         token = auth_data["refresh_token"]
     except AnovaAuthError:
         raise ValueError("invalid_auth")

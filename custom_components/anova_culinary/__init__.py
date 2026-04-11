@@ -47,7 +47,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     token = entry.data[CONF_TOKEN]
     session = async_get_clientsession(hass)
-    
     client = AnovaClient(token=token, session=session)
     
     try:
@@ -75,13 +74,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
     collection = APORecipeCollection(store)
     await collection.async_load()
-
     hass.data[DOMAIN][entry.entry_id]["recipes"] = collection
 
     # Register native websockets
     ws = DictStorageCollectionWebsocket(
         collection,
-        "anova_culinary/recipes",
+        f"{DOMAIN}/recipes",
         "recipe",
         {"name": str, "stages": list},
         {"name": str, "stages": list}
@@ -91,19 +89,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register the custom frontend panel
     # We will serve the panel assets from the www directory
     try:
+        domain_hyphen = DOMAIN.replace("_", "-")
         www_dir = os.path.join(os.path.dirname(__file__), "www")
         await hass.http.async_register_static_paths([
-            StaticPathConfig("/anova-culinary", www_dir, False)
+            StaticPathConfig(f"/{domain_hyphen}", www_dir, False)
         ])
         await async_register_panel(
             hass,
-            frontend_url_path="anova-culinary",
-            webcomponent_name="anova-culinary",
+            frontend_url_path=domain_hyphen,
+            webcomponent_name=domain_hyphen,
             sidebar_title="Anova",
             sidebar_icon="mdi:stove",
-            module_url="/anova-culinary/panel.js",
+            module_url=f"/{domain_hyphen}/panel.js",
             embed_iframe=False,
             require_admin=False,
+            config={"domain": DOMAIN}
         )
     except Exception as e:
         _LOGGER.warning("Could not register custom panel: %s", e)
@@ -111,16 +111,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        data = hass.data[DOMAIN].pop(entry.entry_id)
-        client: AnovaClient = data["client"]
-        await client.close()
+        if data := hass.data.get(DOMAIN, {}).pop(entry.entry_id, None):
+            client: AnovaClient = data["client"]
+            await client.close()
         
         # Note: Unregistering panels built-in to custom_components isn't trivial in HA without 
         # private APIs, but we'll leave it registered since the user won't un-install often.

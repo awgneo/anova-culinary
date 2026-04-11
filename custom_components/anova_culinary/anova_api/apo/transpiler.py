@@ -5,8 +5,8 @@ import copy
 from typing import Dict, Any, List, Optional
 
 from .models import (
-    APOCook, APORecipe, APOStage, APOTimer, APOTimerTrigger,
-    APOProbe, APOHeatingElement, APOFanSpeed, APONodes, APOState
+    AnovaPOCook, AnovaPORecipe, AnovaPOStage, AnovaPOTimer, AnovaPOTimerTrigger,
+    AnovaPOProbe, AnovaPOHeatingElement, AnovaPOFanSpeed, AnovaPONodes, AnovaPOState
 )
 from ..device import AnovaDevice
 
@@ -14,21 +14,21 @@ def _generate_uuid() -> str:
     """Generate a UUID string disguised as an android app structure."""
     return f"android-{uuid.uuid4()}"
 
-def recipe_to_cook(recipe: APORecipe) -> APOCook:
+def recipe_to_cook(recipe: AnovaPORecipe) -> AnovaPOCook:
     """Bootstraps a fresh APOCook runtime proxy from a static Recipe."""
     cloned = copy.deepcopy(recipe)
     for stage in cloned.stages:
         if not stage.id:
             stage.id = _generate_uuid()
             
-    return APOCook(
+    return AnovaPOCook(
         recipe=cloned,
         cook_id=_generate_uuid(),
         active_stage_index=0,
         active_stage_id=cloned.stages[0].id if cloned.stages else ""
     )
 
-def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
+def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
     """Forward Transpiler. Converts APOCook to the CMD_APO_START payload."""
     stages = []
     
@@ -38,16 +38,19 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
             
         # Clamp temperature constraints based on model and elements
         target_temp = stage.temperature
-        if device.model in ("oven", "oven_v2") and stage.heating_elements == APOHeatingElement.BOTTOM and target_temp > 230.0:
-            target_temp = 230.0 # 446F Limit
-        elif device.model not in ("oven", "oven_v2") and stage.heating_elements == APOHeatingElement.BOTTOM and target_temp > 180.0:
-            target_temp = 180.0 # 356F Limit
+        if getattr(stage, "temperature_unit", "C") == "F":
+            target_temp = (target_temp - 32) * 5.0 / 9.0
+
+        if device.type == "oven_v2" and stage.heating_elements == AnovaPOHeatingElement.BOTTOM and target_temp > 230.0:
+            target_temp = 230.0 # 446F Limit for v2
+        elif device.type != "oven_v2" and stage.heating_elements == AnovaPOHeatingElement.BOTTOM and target_temp > 180.0:
+            target_temp = 180.0 # 356F Limit for v1
             
         top_on = "top" in stage.heating_elements.value
         bottom_on = "bottom" in stage.heating_elements.value
         rear_on = "rear" in stage.heating_elements.value
         
-        fan_speeds = {APOFanSpeed.HIGH: 100, APOFanSpeed.MEDIUM: 50, APOFanSpeed.LOW: 25, APOFanSpeed.OFF: 0}
+        fan_speeds = {AnovaPOFanSpeed.HIGH: 100, AnovaPOFanSpeed.MEDIUM: 50, AnovaPOFanSpeed.LOW: 25, AnovaPOFanSpeed.OFF: 0}
         speed_int = fan_speeds.get(stage.fan, 100)
         
         elements_dict = {
@@ -62,7 +65,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
             mode: {"setpoint": {"celsius": target_temp}}
         }
         
-        if device.model in ("oven", "oven_v2"):
+        if device.type == "oven_v2":
             # v2 oven schema
             s_dict = {
                 "id": stage.id,
@@ -84,18 +87,18 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                     "relativeHumidity": {"setpoint": stage.steam}
                 }
                 
-            if isinstance(stage.advance, APOTimer):
+            if isinstance(stage.advance, AnovaPOTimer):
                 trigger_cond = None
-                if stage.advance.trigger == APOTimerTrigger.PREHEATED:
+                if stage.advance.trigger == AnovaPOTimerTrigger.PREHEATED:
                     trigger_cond = {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}
-                elif stage.advance.trigger == APOTimerTrigger.MANUALLY:
+                elif stage.advance.trigger == AnovaPOTimerTrigger.MANUALLY:
                     trigger_cond = {"and": {"userAction": {"=": True}}}
-                elif stage.advance.trigger == APOTimerTrigger.FOOD_DETECTED:
+                elif stage.advance.trigger == AnovaPOTimerTrigger.FOOD_DETECTED:
                     trigger_cond = {"or": {"userAction": {"=": True}, "nodes.cavityCamera.isEmpty": {"=": False}}}
                 
                 # If 'Immediately', the user intends to skip preheat and lock entirely. 
                 # Pop the primary entry lock for the stage so it bypasses preheat gating.
-                if stage.advance.trigger == APOTimerTrigger.IMMEDIATELY and "entry" in s_dict:
+                if stage.advance.trigger == AnovaPOTimerTrigger.IMMEDIATELY and "entry" in s_dict:
                     s_dict.pop("entry")
                 
                 s_dict["do"]["timer"] = {
@@ -106,7 +109,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                     
                 s_dict["exit"]["conditions"]["and"] = {"nodes.timer.mode": {"=": "completed"}}
                 
-            elif isinstance(stage.advance, APOProbe):
+            elif isinstance(stage.advance, AnovaPOProbe):
                 s_dict["do"]["temperatureProbe"] = {
                     "setpoint": {"celsius": stage.advance.target}
                 }
@@ -139,18 +142,18 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
                     "relativeHumidity": {"setpoint": stage.steam}
                 }
             
-            if isinstance(stage.advance, APOTimer):
+            if isinstance(stage.advance, AnovaPOTimer):
                 trigger_map = {
-                    APOTimerTrigger.FOOD_DETECTED: "on-detection",
-                    APOTimerTrigger.IMMEDIATELY: "immediately",
-                    APOTimerTrigger.PREHEATED: "when-preheated",
-                    APOTimerTrigger.MANUALLY: "manual"
+                    AnovaPOTimerTrigger.FOOD_DETECTED: "on-detection",
+                    AnovaPOTimerTrigger.IMMEDIATELY: "immediately",
+                    AnovaPOTimerTrigger.PREHEATED: "when-preheated",
+                    AnovaPOTimerTrigger.MANUALLY: "manual"
                 }
                 s_dict["timer"] = {
                     "initial": stage.advance.duration,
                     "startType": trigger_map.get(stage.advance.trigger, "immediately")
                 }
-            elif isinstance(stage.advance, APOProbe):
+            elif isinstance(stage.advance, AnovaPOProbe):
                 s_dict["probe"] = {
                     "setpoint": {"celsius": stage.advance.target}
                 }
@@ -160,13 +163,13 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
     # Wrap in payload
     inner_payload = {
         "cookId": cook.cook_id or _generate_uuid(),
-        "cookerId": device.device_id,
+        "cookerId": device.id,
         "stages": stages
     }
     
-    if device.model in ("oven", "oven_v2"):
+    if device.type == "oven_v2":
         inner_payload.update({
-            "type": device.model,
+            "type": device.type,
             "originSource": "android",
             "cookableType": "manual",
             "cookableId": "",
@@ -176,7 +179,7 @@ def cook_to_payload(cook: APOCook, device: AnovaDevice) -> dict:
         
     return inner_payload
 
-def payload_to_state(raw_payload: dict) -> APOState:
+def payload_to_state(raw_payload: dict) -> AnovaPOState:
     """Parses raw websocket telemetry into a pristine APOState."""
     inner = raw_payload
     if "nodes" not in inner:
@@ -185,7 +188,7 @@ def payload_to_state(raw_payload: dict) -> APOState:
         elif isinstance(inner.get("payload"), dict) and "nodes" in inner["payload"]:
             inner = inner["payload"]
             
-    nodes = APONodes()
+    nodes = AnovaPONodes()
     if "nodes" in inner:
         n = inner["nodes"]
         bulbs = n.get("temperatureBulbs", {})
@@ -339,7 +342,7 @@ def payload_to_state(raw_payload: dict) -> APOState:
         state_str = "idle"
         is_running = bool(inner.get("activeStageId"))
         
-    return APOState(
+    return AnovaPOState(
         is_running=is_running,
         state=state_str,
         nodes=nodes,
@@ -347,7 +350,7 @@ def payload_to_state(raw_payload: dict) -> APOState:
         raw_state=raw_payload
     )
 
-def payload_cook_to_cook(raw_payload: dict) -> APOCook:
+def payload_cook_to_cook(raw_payload: dict) -> AnovaPOCook:
     """Reverse Transpiler. Converts payload telemetry to APOCook."""
     cook_dict = raw_payload.get("cook", raw_payload)
     if "stages" not in cook_dict and "payload" in raw_payload:
@@ -360,7 +363,7 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
     universal_stages = []
     
     for raw_stage in stages_raw:
-        s = APOStage()
+        s = AnovaPOStage()
         s.id = raw_stage.get("id", _generate_uuid())
         
         # Try extracting from v2 'do' envelope first
@@ -387,17 +390,17 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
         rear = els.get("rear", {}).get("on", False)
         
         if top and bottom:
-            s.heating_elements = APOHeatingElement.TOP_BOTTOM
+            s.heating_elements = AnovaPOHeatingElement.TOP_BOTTOM
         elif top and rear:
-            s.heating_elements = APOHeatingElement.TOP_REAR
+            s.heating_elements = AnovaPOHeatingElement.TOP_REAR
         elif bottom and rear:
-            s.heating_elements = APOHeatingElement.BOTTOM_REAR
+            s.heating_elements = AnovaPOHeatingElement.BOTTOM_REAR
         elif top:
-            s.heating_elements = APOHeatingElement.TOP
+            s.heating_elements = AnovaPOHeatingElement.TOP
         elif bottom:
-            s.heating_elements = APOHeatingElement.BOTTOM
+            s.heating_elements = AnovaPOHeatingElement.BOTTOM
         else:
-            s.heating_elements = APOHeatingElement.REAR
+            s.heating_elements = AnovaPOHeatingElement.REAR
             
         # Fan
         fan_speed = block.get("fan", {}).get("speed", 100)
@@ -408,13 +411,13 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
             fan_speed = 100
 
         if fan_speed >= 100:
-            s.fan = APOFanSpeed.HIGH
+            s.fan = AnovaPOFanSpeed.HIGH
         elif fan_speed >= 50:
-            s.fan = APOFanSpeed.MEDIUM
+            s.fan = AnovaPOFanSpeed.MEDIUM
         elif fan_speed > 0:
-            s.fan = APOFanSpeed.LOW
+            s.fan = AnovaPOFanSpeed.LOW
         else:
-            s.fan = APOFanSpeed.OFF
+            s.fan = AnovaPOFanSpeed.OFF
             
         # Advance (Timer or Probe)
         timer = block.get("timer", {})
@@ -422,7 +425,7 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
         
         if probe and "setpoint" in probe:
             targ = probe.get("setpoint", {}).get("celsius", 55.0)
-            s.advance = APOProbe(target=targ)
+            s.advance = AnovaPOProbe(target=targ)
         elif timer:
             # Check v2 triggers
             conds = timer.get("entry", {}).get("conditions", {})
@@ -431,20 +434,20 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
             if "startType" in timer:
                 # v1 trigger map
                 t_str = timer["startType"]
-                if t_str == "on-detection": trigger = APOTimerTrigger.FOOD_DETECTED
-                elif t_str == "when-preheated": trigger = APOTimerTrigger.PREHEATED
-                elif t_str == "manual": trigger = APOTimerTrigger.MANUALLY
-                else: trigger = APOTimerTrigger.IMMEDIATELY
+                if t_str == "on-detection": trigger = AnovaPOTimerTrigger.FOOD_DETECTED
+                elif t_str == "when-preheated": trigger = AnovaPOTimerTrigger.PREHEATED
+                elif t_str == "manual": trigger = AnovaPOTimerTrigger.MANUALLY
+                else: trigger = AnovaPOTimerTrigger.IMMEDIATELY
             elif not conds or conds == {"and": {}}:
-                trigger = APOTimerTrigger.IMMEDIATELY
+                trigger = AnovaPOTimerTrigger.IMMEDIATELY
             elif "or" in conds and "nodes.cavityCamera.isEmpty" in conds["or"]:
-                trigger = APOTimerTrigger.FOOD_DETECTED
+                trigger = AnovaPOTimerTrigger.FOOD_DETECTED
             elif "and" in conds and any("nodes.temperatureBulbs" in k for k in conds["and"]):
-                trigger = APOTimerTrigger.PREHEATED
+                trigger = AnovaPOTimerTrigger.PREHEATED
             else:
-                trigger = APOTimerTrigger.MANUALLY
+                trigger = AnovaPOTimerTrigger.MANUALLY
                 
-            s.advance = APOTimer(duration=dur, trigger=trigger)
+            s.advance = AnovaPOTimer(duration=dur, trigger=trigger)
 
         universal_stages.append(s)
 
@@ -455,11 +458,11 @@ def payload_cook_to_cook(raw_payload: dict) -> APOCook:
             idx = i
             break
 
-    recipe = APORecipe(
+    recipe = AnovaPORecipe(
         title=cook_dict.get("cookTitle", cook_dict.get("title", "")),
         stages=universal_stages
     )
-    return APOCook(
+    return AnovaPOCook(
         recipe=recipe,
         cook_id=cook_id,
         active_stage_index=idx,

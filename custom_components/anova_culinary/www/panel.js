@@ -32,7 +32,7 @@ class AnovaCulinary extends LitElement {
     if (!this.hass) return;
     try {
       const data = await this.hass.connection.sendMessagePromise({
-        type: 'anova_culinary/recipes/list'
+        type: `${this.panel.config.domain}/recipes/list`
       });
       this.recipes = data;
     } catch (e) {
@@ -45,7 +45,7 @@ class AnovaCulinary extends LitElement {
   }
 
   _startCreate() {
-    this.editingRecipe = { name: "New Universal Recipe", stages: [] };
+    this.editingRecipe = { name: "", stages: [] };
   }
 
   _startEdit(recipe) {
@@ -58,9 +58,11 @@ class AnovaCulinary extends LitElement {
       id: crypto.randomUUID ? crypto.randomUUID() : "uuid-1234",
       sous_vide: false,
       temperature: 75.0,
+      temperature_unit: "C",
       steam: 0,
       heating_elements: "rear",
-      fan: "high"
+      fan: "high",
+      advance: null
     }];
     this.requestUpdate();
   }
@@ -78,6 +80,22 @@ class AnovaCulinary extends LitElement {
     this.requestUpdate();
   }
 
+  _updateAdvance(index, field, value) {
+    if (!this.editingRecipe) return;
+    const stage = this.editingRecipe.stages[index];
+    
+    if (field === 'type') {
+        if (value === 'none') stage.advance = null;
+        else if (value === 'timer') stage.advance = { duration: 3600, trigger: "manually" };
+        else if (value === 'probe') stage.advance = { target: 50.0 };
+    } else if (stage.advance) {
+        if (field === 'duration') stage.advance.duration = parseInt(value) || 0;
+        if (field === 'trigger') stage.advance.trigger = value;
+        if (field === 'target') stage.advance.target = parseFloat(value) || 0.0;
+    }
+    this.requestUpdate();
+  }
+
   _removeStage(index) {
     if (!this.editingRecipe) return;
     this.editingRecipe.stages.splice(index, 1);
@@ -88,7 +106,7 @@ class AnovaCulinary extends LitElement {
     if (!this.editingRecipe) return;
 
     try {
-      const type = this.editingRecipe.id ? 'anova_culinary/recipes/update' : 'anova_culinary/recipes/create';
+      const type = this.editingRecipe.id ? `${this.panel.config.domain}/recipes/update` : `${this.panel.config.domain}/recipes/create`;
       const payload = {
         type: type,
         name: this.editingRecipe.name,
@@ -108,7 +126,7 @@ class AnovaCulinary extends LitElement {
   async _deleteRecipe(id, name) {
     try {
       await this.hass.connection.sendMessagePromise({
-        type: 'anova_culinary/recipes/delete',
+        type: `${this.panel.config.domain}/recipes/delete`,
         recipe_id: id
       });
     } catch (e) {
@@ -128,7 +146,7 @@ class AnovaCulinary extends LitElement {
       <div class="app-background">
           <div class="glass-container">
             <div class="header">
-              <h1>APO Recipes</h1>
+              <h1>Recipes</h1>
               <button class="btn-primary glow" @click=${this._startCreate}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                 New Recipe
@@ -137,7 +155,7 @@ class AnovaCulinary extends LitElement {
             
             <div class="search-bar">
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input type="text" placeholder="Search your library..." @input=${this._handleSearch} .value=${this.searchQuery} />
+              <input type="text" placeholder="Search recipes..." @input=${this._handleSearch} .value=${this.searchQuery} />
             </div>
 
             <ul class="recipe-list">
@@ -169,20 +187,20 @@ class AnovaCulinary extends LitElement {
       <div class="app-background">
           <div class="glass-container">
             <div class="header">
-              <h1>${this.editingRecipe.name === "New Universal Recipe" ? "Create Recipe" : "Edit Recipe"}</h1>
+              <h1>${!this.editingRecipe.id ? "Create Recipe" : "Edit Recipe"}</h1>
               <div class="action-group">
                 <button class="btn-ghost" @click=${() => { this.editingRecipe = null; }}>Discard</button>
-                <button class="btn-primary glow" @click=${this._saveRecipe}>Save Universal Recipe</button>
+                <button class="btn-primary glow" @click=${this._saveRecipe}>Save Recipe</button>
               </div>
             </div>
             
             <div class="form-group hero-input">
-                <label>Recipe Identifier</label>
+                <label>NAME</label>
                 <input type="text" .value=${this.editingRecipe.name} @input=${e => this.editingRecipe.name = e.target.value} placeholder="e.g. Perfect Medium Rare Ribeye" />
             </div>
             
             <div class="stages-header">
-                <h3>Cooking Stages</h3>
+                <h3>Stages</h3>
                 <button class="btn-secondary" @click=${this._addStage}>+ Add Stage</button>
             </div>
             
@@ -198,44 +216,81 @@ class AnovaCulinary extends LitElement {
                     
                     <div class="stage-grid-inner">
                         <div class="form-group">
-                            <label>Mode</label>
+                            <label>MODE</label>
                             <select .value=${stage.sous_vide ? "true" : "false"} @change=${e => this._updateStage(i, 'sous_vide', e.target.value)}>
                                 <option value="false">Dry Roasting</option>
-                                <option value="true">Sous Vide Mode</option>
+                                <option value="true">Sous Vide</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label>Target Temp (°C)</label>
-                            <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} />
+                            <label>TEMPERATURE</label>
+                            <div style="display:flex;gap:4px;">
+                              <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="flex:1;" />
+                              <select .value=${stage.temperature_unit || "C"} @change=${e => this._updateStage(i, 'temperature_unit', e.target.value)} style="width:60px;">
+                                <option value="C">C</option>
+                                <option value="F">F</option>
+                              </select>
+                            </div>
                         </div>
                         
                         <div class="form-group">
-                            <label>Steam Humidity (%)</label>
+                            <label>STEAM (%)</label>
                             <input type="number" min="0" max="100" .value=${stage.steam} @input=${e => this._updateStage(i, 'steam', e.target.value)} .disabled=${stage.sous_vide} />
                         </div>
 
                         <div class="form-group">
-                            <label>Heating Logic</label>
+                            <label>HEATING ELEMENTS</label>
                             <select .value=${stage.heating_elements} @change=${e => this._updateStage(i, 'heating_elements', e.target.value)}>
-                                <option value="rear">Rear Element Only</option>
-                                <option value="bottom">Bottom Element</option>
-                                <option value="top">Top Element</option>
-                                <option value="top+rear">Top & Rear</option>
-                                <option value="bottom+rear">Bottom & Rear</option>
-                                <option value="top+bottom">Top & Bottom</option>
+                                <option value="rear">Rear</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="top+rear">Top + Rear</option>
+                                <option value="bottom+rear">Bottom + Rear</option>
+                                <option value="top+bottom">Top + Bottom</option>
                             </select>
                         </div>
                         
                         <div class="form-group">
-                            <label>Convection Fan</label>
+                            <label>FAN SPEED</label>
                             <select .value=${stage.fan} @change=${e => this._updateStage(i, 'fan', e.target.value)}>
-                                <option value="high">High Speed</option>
-                                <option value="medium">Medium Speed</option>
-                                <option value="low">Low Speed</option>
-                                <option value="off">Disabled</option>
+                                <option value="off">Off</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
                             </select>
                         </div>
+
+                        <div class="form-group">
+                            <label>TRANSITION (TIMER/PROBE)</label>
+                            <select .value=${stage.advance === null ? "none" : (stage.advance.target !== undefined ? "probe" : "timer")} @change=${e => this._updateAdvance(i, 'type', e.target.value)}>
+                                <option value="none">Manual Transition</option>
+                                <option value="timer">Timer</option>
+                                <option value="probe">Food Probe</option>
+                            </select>
+                        </div>
+
+                        ${stage.advance && stage.advance.duration !== undefined ? html`
+                        <div class="form-group slide-in">
+                            <label>TIMER DURATION (SEC)</label>
+                            <input type="number" step="1" .value=${stage.advance.duration} @input=${e => this._updateAdvance(i, 'duration', e.target.value)} />
+                        </div>
+                        <div class="form-group slide-in">
+                            <label>TIMER TRIGGER</label>
+                            <select .value=${stage.advance.trigger} @change=${e => this._updateAdvance(i, 'trigger', e.target.value)}>
+                                <option value="manually">Manual / Immediate</option>
+                                <option value="preheated">When Preheated</option>
+                                <option value="food_detected">On Food Detected</option>
+                            </select>
+                        </div>
+                        ` : ''}
+
+                        ${stage.advance && stage.advance.target !== undefined ? html`
+                        <div class="form-group slide-in">
+                            <label>PROBE TARGET</label>
+                            <input type="number" step="0.1" .value=${stage.advance.target} @input=${e => this._updateAdvance(i, 'target', e.target.value)} />
+                        </div>
+                        ` : ''}
+
                     </div>
                 </div>
                 `)}

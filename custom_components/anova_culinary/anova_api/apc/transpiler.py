@@ -2,15 +2,15 @@
 
 from typing import Dict, Any, Optional
 
-from .models import APCState
+from .models import AnovaPCState
 
-def payload_to_state(raw_payload: Dict[str, Any], existing_state: Optional[APCState] = None) -> APCState:
-    """Parses raw websocket telemetry into a pristine APCState.
+def payload_to_state(raw_payload: Dict[str, Any], existing_state: Optional[AnovaPCState] = None) -> AnovaPCState:
+    """Parses raw websocket telemetry into a pristine AnovaPCState.
     
     If existing_state is provided, unmapped fields will seamlessly fall back
     to their existing state values rather than resetting to defaults.
     """
-    state_proxy = existing_state or APCState()
+    state_proxy = existing_state or AnovaPCState()
     
     # Try fetching from status envelope first, fallback to state
     status_str = raw_payload.get("status", raw_payload.get("state", state_proxy.state))

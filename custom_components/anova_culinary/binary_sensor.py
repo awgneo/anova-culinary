@@ -6,9 +6,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .anova_api.client import AnovaClient
-from .anova_api.device import DeviceType
+from .anova_api.device import AnovaDevice
+from .anova_api.product import AnovaProduct
 
 
 async def async_setup_entry(
@@ -20,12 +21,12 @@ async def async_setup_entry(
     client: AnovaClient = hass.data[DOMAIN][entry.entry_id]["client"]
     entities = []
     for device_id, device in client.devices.items():
-        if device.type == DeviceType.APO:
+        if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaDoorSensor(client, device_id, device.name, device.model),
-                AnovaDoorLampSensor(client, device_id, device.name, device.model),
-                AnovaCavityLampSensor(client, device_id, device.name, device.model),
-                AnovaCameraEmptySensor(client, device_id, device.name, device.model),
+                AnovaDoorSensor(client, device),
+                AnovaDoorLampSensor(client, device),
+                AnovaCavityLampSensor(client, device),
+                AnovaCameraEmptySensor(client, device),
             ])
     async_add_entities(entities)
 
@@ -35,10 +36,15 @@ class AnovaAPOBinarySensor(BinarySensorEntity):
     
     _attr_has_entity_name = True
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
-        self._device_id = device_id
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
+        self._device = device
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
@@ -49,9 +55,9 @@ class AnovaAPOBinarySensor(BinarySensorEntity):
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
-        if device_id != self._device_id: return
-        state = self._client.get_apo_state(self._device_id)
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id: return
+        state = self._client.get_apo_state(self._device.id)
         if not state: return
         self._update_from_state(state)
         self.async_write_ha_state()
@@ -64,9 +70,9 @@ class AnovaDoorSensor(AnovaAPOBinarySensor):
     _attr_name = "Oven Door"
     _attr_device_class = BinarySensorDeviceClass.DOOR
 
-    def __init__(self, client, device_id, name, model):
-        super().__init__(client, device_id, name, model)
-        self._attr_unique_id = f"anova_apo_{device_id}_door"
+    def __init__(self, client: AnovaClient, device: AnovaDevice):
+        super().__init__(client, device)
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door"
 
     def _update_from_state(self, state) -> None:
         # For Home Assistant Door class: False = Closed, True = Open
@@ -77,9 +83,9 @@ class AnovaDoorLampSensor(AnovaAPOBinarySensor):
     _attr_name = "Door Lamp"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
 
-    def __init__(self, client, device_id, name, model):
-        super().__init__(client, device_id, name, model)
-        self._attr_unique_id = f"anova_apo_{device_id}_door_lamp"
+    def __init__(self, client: AnovaClient, device: AnovaDevice):
+        super().__init__(client, device)
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door_lamp"
 
     def _update_from_state(self, state) -> None:
         self._attr_is_on = state.nodes.door_lamp_on
@@ -89,9 +95,9 @@ class AnovaCavityLampSensor(AnovaAPOBinarySensor):
     _attr_name = "Cavity Lamp"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
 
-    def __init__(self, client, device_id, name, model):
-        super().__init__(client, device_id, name, model)
-        self._attr_unique_id = f"anova_apo_{device_id}_cavity_lamp"
+    def __init__(self, client: AnovaClient, device: AnovaDevice):
+        super().__init__(client, device)
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_cavity_lamp"
 
     def _update_from_state(self, state) -> None:
         self._attr_is_on = state.nodes.cavity_lamp_on
@@ -101,9 +107,9 @@ class AnovaCameraEmptySensor(AnovaAPOBinarySensor):
     _attr_name = "Camera Status"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
     
-    def __init__(self, client, device_id, name, model):
-        super().__init__(client, device_id, name, model)
-        self._attr_unique_id = f"anova_apo_{device_id}_camera"
+    def __init__(self, client: AnovaClient, device: AnovaDevice):
+        super().__init__(client, device)
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_camera"
 
     def _update_from_state(self, state) -> None:
         # Occupancy class: True means occupied (food detected), False means clear (empty)

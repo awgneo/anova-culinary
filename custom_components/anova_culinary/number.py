@@ -1,18 +1,16 @@
 """Number platform for Anova Precision Ovens."""
 
-from typing import Any
-import uuid
-
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .anova_api.client import AnovaClient
-from .anova_api.device import DeviceType
-from .anova_api.apo.models import APOTimer, APOTimerTrigger
+from .anova_api.device import AnovaDevice
+from .anova_api.product import AnovaProduct
+from .anova_api.apo.models import AnovaPOTimer, AnovaPOTimerTrigger
 
 
 async def async_setup_entry(
@@ -25,10 +23,10 @@ async def async_setup_entry(
     
     entities = []
     for device_id, device in client.devices.items():
-        if device.type == DeviceType.APO:
+        if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaSteamPercentage(client, device_id, device.name, device.model),
-                AnovaTimerTarget(client, device_id, device.name, device.model),
+                AnovaSteamPercentage(client, device),
+                AnovaTimerTarget(client, device),
             ])
             
     async_add_entities(entities)
@@ -44,24 +42,29 @@ class AnovaSteamPercentage(NumberEntity):
     _attr_native_max_value = 100
     _attr_native_step = 1
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
-        self._device_id = device_id
-        self._attr_unique_id = f"anova_apo_{device_id}_steam"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_steam"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
         self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device_id, {})
+        self._handle_update(self._device.id)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._remove_cb:
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
-        if device_id != self._device_id: return
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
         
@@ -74,10 +77,10 @@ class AnovaSteamPercentage(NumberEntity):
         except: pass
 
     async def async_set_native_value(self, value: float) -> None:
-        cook = self._client.get_current_cook(self._device_id)
+        cook = self._client.get_current_cook(self._device.id)
         if cook and cook.current_stage:
             cook.current_stage.steam = int(value)
-            await self._client.play_cook(self._device_id, cook)
+            await self._client.play_cook(self._device.id, cook)
 
 
 class AnovaTimerTarget(NumberEntity):
@@ -90,39 +93,44 @@ class AnovaTimerTarget(NumberEntity):
     _attr_native_max_value = 1440
     _attr_native_step = 1
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
-        self._device_id = device_id
-        self._attr_unique_id = f"anova_apo_{device_id}_timer"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, device_id)})
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_timer"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
         self._remove_cb = None
 
     async def async_added_to_hass(self) -> None:
         self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device_id, {})
+        self._handle_update(self._device.id)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._remove_cb:
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
-        if device_id != self._device_id: return
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
         
         try:
             curr_stage = state.cook.current_stage
-            if curr_stage and isinstance(curr_stage.advance, APOTimer):
+            if curr_stage and isinstance(curr_stage.advance, AnovaPOTimer):
                 self._attr_native_value = int(curr_stage.advance.duration / 60.0) # show minutes
                 self.async_write_ha_state()
         except: pass
 
     async def async_set_native_value(self, value: float) -> None:
-        cook = self._client.get_current_cook(self._device_id)
+        cook = self._client.get_current_cook(self._device.id)
         if cook and cook.current_stage:
             # We assume a manual trigger for simple slider adjustments!
-            cook.current_stage.advance = APOTimer(duration=int(value * 60), trigger=APOTimerTrigger.MANUALLY)
-            await self._client.play_cook(self._device_id, cook)
+            cook.current_stage.advance = AnovaPOTimer(duration=int(value * 60), trigger=AnovaPOTimerTrigger.MANUALLY)
+            await self._client.play_cook(self._device.id, cook)
 
 

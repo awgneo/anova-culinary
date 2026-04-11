@@ -5,15 +5,15 @@ import copy
 import json
 import logging
 import uuid
-from typing import Dict, Callable, Any, Optional
+from typing import Dict, Callable, Any, Optional, Union
 
 import aiohttp
-from .device import AnovaDevice, DeviceType
-from .apo import APOState, APOCook
-from .apc import APCState
+from .device import AnovaDevice, AnovaProduct
+from .apo import AnovaPOState, AnovaPOCook
+from .apc import AnovaPCState, AnovaPCCook
 from . import apo, apc
-from .auth import FirebaseAuthManager
-from .exceptions import AnovaConnectionError, AnovaAuthError, AnovaTimeoutError
+from .auth import AnovaAuth
+from .exceptions import AnovaConnectionError, AnovaAuthError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,14 +27,12 @@ class AnovaClient:
         """Initialize the Anova client."""
         self._session = session or aiohttp.ClientSession()
         self._token = None
-        self._auth_manager = FirebaseAuthManager(self._session, token)
+        self._auth_manager = AnovaAuth(self._session, token)
 
         self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self._devices: Dict[str, AnovaDevice] = {}
-        self._apc_states: Dict[str, APCState] = {}
-        self._apo_states: Dict[str, APOState] = {}
         
-        self._callbacks: list[Callable[[str, Any], None]] = []
+        self._callbacks: list[Callable[[str], None]] = []
         self._listen_task: Optional[asyncio.Task] = None
 
     @property
@@ -42,15 +40,21 @@ class AnovaClient:
         """Return discovered devices."""
         return self._devices
         
-    def get_apc_state(self, device_id: str) -> Optional[APCState]:
+    def get_apc_state(self, device_id: str) -> Optional[AnovaPCState]:
         """Get the state of a Precision Cooker."""
-        return self._apc_states.get(device_id)
+        device = self._devices.get(device_id)
+        if device and device.product == AnovaProduct.APC:
+            return device.state
+        return None
 
-    def get_apo_state(self, device_id: str) -> Optional[APOState]:
+    def get_apo_state(self, device_id: str) -> Optional[AnovaPOState]:
         """Get the state of a Precision Oven."""
-        return self._apo_states.get(device_id)
+        device = self._devices.get(device_id)
+        if device and device.product == AnovaProduct.APO:
+            return device.state
+        return None
 
-    def register_callback(self, callback: Callable[[str, Any], None]) -> Callable[[], None]:
+    def register_callback(self, callback: Callable[[str], None]) -> Callable[[], None]:
         """Register a callback for state updates."""
         self._callbacks.append(callback)
         def remove_callback():
@@ -110,102 +114,64 @@ class AnovaClient:
                 d[k] = v
         return d
 
-    def get_current_cook(self, device_id: str) -> Optional[APOCook]:
+    def get_current_cook(self, device_id: str) -> Optional[AnovaPOCook]:
         """Fetch the current universally represented active cook."""
-        state = self._apo_states.get(device_id)
+        state = self.get_apo_state(device_id)
         if state and state.cook:
             return copy.deepcopy(state.cook)
         return None
 
-    async def play_cook(self, device_id: str, cook: APOCook):
-        """Skinny network wrapper for transmitting an APOCook transpiled payload."""
-        state = self.get_apo_state(device_id)
-        if state and state.cook and state.is_running and state.cook.cook_id == cook.cook_id:
-            return await self.update_cook(device_id, cook)
-            
+    async def play_cook(self, device_id: str, cook: Union[AnovaPOCook, AnovaPCCook]):
+        """Unified command wrapper to start or update a cook based on device product type."""
         device = self._devices.get(device_id)
-        if not device or device.type != DeviceType.APO:
+        if not device:
             return
-            
-        payload_dict = apo.cook_to_payload(cook, device)
-        
-        cmd = {
-            "command": "CMD_APO_START",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "id": device_id,
-                "type": "CMD_APO_START",
-                "payload": payload_dict
-            }
-        }
+
+        if isinstance(cook, AnovaPOCook):
+            if device.product != AnovaProduct.APO:
+                return
+            state = self.get_apo_state(device_id)
+            if state and state.cook and state.is_running and state.cook.cook_id == cook.cook_id:
+                cmd = apo.build_update_cook_command(device, cook)
+            else:
+                cmd = apo.build_start_command(device, cook)
+                
+        elif isinstance(cook, AnovaPCCook):
+            if device.product != AnovaProduct.APC:
+                return
+            cmd = apc.build_start_command(
+                device, 
+                target=cook.target_temperature, 
+                unit=cook.temperature_unit.value, 
+                timer=cook.timer
+            )
+        else:
+            return
+
         await self.send_command(cmd)
 
-    async def update_cook(self, device_id: str, cook: APOCook):
-        """Update active cook stages natively."""
+    async def update_cook(self, device_id: str, cook: AnovaPOCook):
+        """Legacy helper matching update API; falls back to exact update implementation."""
         device = self._devices.get(device_id)
-        if not device or device.type != DeviceType.APO:
+        if not device or device.product != AnovaProduct.APO:
             return
             
-        payload_dict = apo.cook_to_payload(cook, device)
-        
-        cmd = {
-            "command": "CMD_APO_UPDATE_COOK_STAGES",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "id": device_id,
-                "type": "CMD_APO_UPDATE_COOK_STAGES",
-                "payload": {
-                    "stages": payload_dict.get("stages", [])
-                }
-            }
-        }
+        cmd = apo.build_update_cook_command(device, cook)
         await self.send_command(cmd)
 
-    async def stop_apo_cook(self, device_id: str):
-        """Halt operation of an APO device."""
-        cmd = {
-            "command": "CMD_APO_STOP",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "id": device_id,
-                "type": "CMD_APO_STOP"
-            }
-        }
-        await self.send_command(cmd)
-
-    async def play_apc_cook(self, device_id: str, target: float, unit: str, timer: int = 3600):
-        """Start operation of an APC device."""
+    async def stop_cook(self, device_id: str):
+        """Unified command wrapper to gracefully halt any active operation."""
         device = self._devices.get(device_id)
-        if not device or device.type != DeviceType.APC:
+        if not device:
             return
             
-        cmd = {
-            "command": "CMD_APC_START",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "cookerId": device_id,
-                "type": device.model,
-                "targetTemperature": target,
-                "unit": unit,
-                "timer": timer
-            }
-        }
-        await self.send_command(cmd)
-
-    async def stop_apc_cook(self, device_id: str):
-        """Halt operation of an APC device."""
-        device = self._devices.get(device_id)
-        if not device or device.type != DeviceType.APC:
+        if device.product == AnovaProduct.APO:
+            cmd = apo.build_stop_command(device)
+        elif device.product == AnovaProduct.APC:
+            cmd = apc.build_stop_command(device)
+        else:
             return
             
-        cmd = {
-            "command": "CMD_APC_STOP",
-            "requestId": str(uuid.uuid4()),
-            "payload": {
-                "cookerId": device_id,
-                "type": device.model,
-            }
-        }
         await self.send_command(cmd)
 
 
@@ -245,9 +211,9 @@ class AnovaClient:
         
         # Discovery
         if cmd == "EVENT_APC_WIFI_LIST":
-            self._process_discovery(payload, DeviceType.APC)
+            self._process_discovery(payload, AnovaProduct.APC)
         elif cmd == "EVENT_APO_WIFI_LIST":
-            self._process_discovery(payload, DeviceType.APO)
+            self._process_discovery(payload, AnovaProduct.APO)
             
         # State Updates
         elif "STATE" in cmd and isinstance(payload, dict):
@@ -262,62 +228,50 @@ class AnovaClient:
                 
                 # Notify callbacks
                 for cb in self._callbacks:
-                    cb(dev_id, payload)
+                    cb(dev_id)
         
         # Command responses are typically RESPONSE
         elif cmd == "RESPONSE":
             _LOGGER.debug("Received command response: %s", payload)
 
-    def _process_discovery(self, payload: list, dev_type: DeviceType):
+    def _process_discovery(self, payload: list, product: AnovaProduct):
         """Process discovery payload list."""
         if not isinstance(payload, list):
             return
             
-        for dev in payload:
-            device_id = dev.get("cookerId")
+        for discovery in payload:
+            device_id = discovery.get("cookerId")
             if device_id and device_id not in self._devices:
-                raw_model = dev.get("type", "unknown")
-                raw_name = dev.get("name", "")
-                
-                friendly_model = raw_model
-                if raw_model == "oven_v1": friendly_model = "Anova Precision Oven 1.0"
-                elif raw_model == "oven_v2": friendly_model = "Anova Precision Oven 2.0"
-                elif raw_model == "a3": friendly_model = "Anova Precision Cooker"
-                elif raw_model == "pro": friendly_model = "Anova Precision Cooker Pro"
-                elif dev_type == DeviceType.APC: friendly_model = "Anova Precision Cooker"
-                elif dev_type == DeviceType.APO: friendly_model = "Anova Precision Oven"
-                
-                # Replace the name if it is empty, or if they haven't set a custom name in the app 
-                # (meaning the API returns 'oven_v2' statically)
-                device_name = raw_name if raw_name and raw_name != raw_model else friendly_model
-                
+                # Initialize device using the new dataclass features
                 self._devices[device_id] = AnovaDevice(
-                    device_id=device_id,
-                    type=dev_type,
-                    model=raw_model,
-                    name=device_name,
-                    friendly_model=friendly_model
+                    id=device_id,
+                    product=product,
+                    type=discovery.get("type", "Unknown"),
+                    name=discovery.get("name", "")
                 )
-                _LOGGER.info("Discovered %s: %s", dev_type.value, device_id)
                 
-                if dev_type == DeviceType.APC:
-                    self._apc_states[device_id] = APCState()
+                device = self._devices[device_id]
+                _LOGGER.info("Discovered %s: %s (%s)", product.value, device_id, device.model)
+
+                if product == AnovaProduct.APC:
+                    device.state = AnovaPCState()
                 else:
-                    self._apo_states[device_id] = APOState()
+                    device.state = AnovaPOState()
 
     def _update_apc_state(self, device_id: str, payload: Dict[str, Any]):
         """Update internal APC state based on raw payload."""
-        existing = self._apc_states.get(device_id)
+        device = self._devices.get(device_id)
+        if not device: return
         try:
-            self._apc_states[device_id] = apc.payload_to_state(payload, existing_state=existing)
+            device.state = apc.payload_to_state(payload, existing_state=device.state)
         except Exception as e:
             _LOGGER.error("Transpiler failed to unmarshal APC payload: %s", e)
         
     def _update_apo_state(self, device_id: str, payload: Dict[str, Any]):
         """Update internal APO state based on raw payload."""
-        # Power the APO transpilation engine
+        device = self._devices.get(device_id)
+        if not device: return
         try:
-            state = apo.payload_to_state(payload)
-            self._apo_states[device_id] = state
+            device.state = apo.payload_to_state(payload)
         except Exception as e:
             _LOGGER.error("Transpiler failed to unmarshal payload: %s", e)

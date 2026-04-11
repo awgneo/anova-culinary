@@ -15,7 +15,7 @@ ANOVA_API_KEY = "AIzaSyB0VNqmJVAeR1fn_NbqqhwSytyMOZ_JO9c"
 IDENTITY_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={ANOVA_API_KEY}"
 TOKEN_URL = f"https://securetoken.googleapis.com/v1/token?key={ANOVA_API_KEY}"
 
-class FirebaseAuthManager:
+class AnovaAuth:
     """Manages Firebase OAuth JWT rotations for Anova."""
 
     def __init__(self, session: aiohttp.ClientSession, refresh_token: str):

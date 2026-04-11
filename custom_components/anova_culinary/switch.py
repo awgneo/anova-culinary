@@ -9,9 +9,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .anova_api.client import AnovaClient
-from .anova_api.device import DeviceType
+from .anova_api.device import AnovaDevice
+from .anova_api.product import AnovaProduct
 
 
 async def async_setup_entry(
@@ -24,8 +25,8 @@ async def async_setup_entry(
     
     entities = []
     for device_id, device in client.devices.items():
-        if device.type == DeviceType.APO:
-            entities.append(AnovaSousVideSwitch(client, device_id, device.name, device.model))
+        if device.product == AnovaProduct.APO:
+            entities.append(AnovaSousVideSwitch(client, device))
             
     async_add_entities(entities)
 
@@ -37,18 +38,17 @@ class AnovaSousVideSwitch(SwitchEntity):
     _attr_name = "Sous Vide Mode"
     _attr_icon = "mdi:water-boiler"
 
-    def __init__(self, client: AnovaClient, device_id: str, name: str, model: str) -> None:
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""
         self._client = client
-        self._device_id = device_id
-        self._model = model
-        self._attr_unique_id = f"anova_apo_{device_id}_sous_vide"
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_sous_vide"
         
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device_id)},
-            name=name,
-            manufacturer="Anova",
-            model=model,
+            identifiers={(DOMAIN, self._device.id)},
+            name=device.name,
+            manufacturer=MANUFACTURER,
+            model=device.model,
         )
         self._attr_is_on = False
         self._remove_cb = None
@@ -56,7 +56,7 @@ class AnovaSousVideSwitch(SwitchEntity):
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
         self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device_id, {})
+        self._handle_update(self._device.id)
 
     async def async_will_remove_from_hass(self) -> None:
         """Clean up."""
@@ -64,12 +64,12 @@ class AnovaSousVideSwitch(SwitchEntity):
             self._remove_cb()
 
     @callback
-    def _handle_update(self, device_id: str, payload: dict) -> None:
+    def _handle_update(self, device_id: str) -> None:
         """Handle updated data from the websocket."""
-        if device_id != self._device_id:
+        if device_id != self._device.id:
             return
             
-        state = self._client.get_apo_state(self._device_id)
+        state = self._client.get_apo_state(self._device.id)
         if not state or not state.cook:
             return
 
@@ -83,14 +83,14 @@ class AnovaSousVideSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        cook = self._client.get_current_cook(self._device_id)
+        cook = self._client.get_current_cook(self._device.id)
         if cook and cook.current_stage:
             cook.current_stage.sous_vide = True
-            await self._client.play_cook(self._device_id, cook)
+            await self._client.play_cook(self._device.id, cook)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
-        cook = self._client.get_current_cook(self._device_id)
+        cook = self._client.get_current_cook(self._device.id)
         if cook and cook.current_stage:
             cook.current_stage.sous_vide = False
-            await self._client.play_cook(self._device_id, cook)
+            await self._client.play_cook(self._device.id, cook)
