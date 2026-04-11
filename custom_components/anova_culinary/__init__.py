@@ -9,10 +9,12 @@ from homeassistant.helpers import storage
 from homeassistant.helpers.collection import DictStorageCollection, DictStorageCollectionWebsocket
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components.panel_custom import async_register_panel
+from homeassistant.components import websocket_api
 import asyncio
 import os
 
 from .anova_api.client import AnovaClient
+from .anova_api.product import AnovaProduct
 from .const import DOMAIN, CONF_TOKEN, RECIPE_STORAGE_KEY, RECIPE_STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,6 +41,27 @@ class APORecipeCollection(DictStorageCollection):
 
     async def _update_data(self, item: dict, update_data: dict) -> dict:
         return {**item, **update_data}
+
+
+@websocket_api.websocket_command({"type": f"{DOMAIN}/cook"})
+@callback
+def ws_cook(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """Return the active recipe running on an Anova Precision Oven."""
+    active_recipe = None
+    for entry_data in hass.data.get(DOMAIN, {}).values():
+        client = entry_data.get("client")
+        if not client: continue
+        
+        for device_id, device in client.devices.items():
+            if device.product == AnovaProduct.APO:
+                state = client.get_apo_state(device_id)
+                if state and state.is_running and state.cook and state.cook.recipe:
+                    active_recipe = state.cook.recipe.to_dict()
+                    break
+        if active_recipe: break
+    
+    connection.send_result(msg["id"], active_recipe)
+
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -85,6 +108,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         {"name": str, "stages": list}
     )
     ws.async_setup(hass)
+    
+    websocket_api.async_register_command(hass, ws_cook)
 
     # We will serve the panel assets from the www directory
     try:

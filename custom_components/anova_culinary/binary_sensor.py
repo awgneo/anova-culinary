@@ -31,7 +31,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AnovaAPOBinarySensor(BinarySensorEntity):
+class AnovaBinarySensor(BinarySensorEntity):
     """Base class for Anova Binary Sensors."""
     
     _attr_has_entity_name = True
@@ -66,7 +66,7 @@ class AnovaAPOBinarySensor(BinarySensorEntity):
         pass
 
 
-class AnovaDoorSensor(AnovaAPOBinarySensor):
+class AnovaDoorSensor(AnovaBinarySensor):
     _attr_name = "Oven Door"
     _attr_device_class = BinarySensorDeviceClass.DOOR
 
@@ -79,7 +79,7 @@ class AnovaDoorSensor(AnovaAPOBinarySensor):
         self._attr_is_on = not state.nodes.door_closed
 
 
-class AnovaDoorLampSensor(AnovaAPOBinarySensor):
+class AnovaDoorLampSensor(AnovaBinarySensor):
     _attr_name = "Door Lamp"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
 
@@ -91,7 +91,7 @@ class AnovaDoorLampSensor(AnovaAPOBinarySensor):
         self._attr_is_on = state.nodes.door_lamp_on
 
 
-class AnovaCavityLampSensor(AnovaAPOBinarySensor):
+class AnovaCavityLampSensor(AnovaBinarySensor):
     _attr_name = "Cavity Lamp"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
 
@@ -103,7 +103,7 @@ class AnovaCavityLampSensor(AnovaAPOBinarySensor):
         self._attr_is_on = state.nodes.cavity_lamp_on
 
 
-class AnovaCameraEmptySensor(AnovaAPOBinarySensor):
+class AnovaCameraEmptySensor(AnovaBinarySensor):
     _attr_name = "Camera Status"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
     

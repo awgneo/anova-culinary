@@ -14,6 +14,7 @@ class AnovaCulinary extends LitElement {
       recipes: { type: Array },
       searchQuery: { type: String },
       editingRecipe: { type: Object },
+      activeCook: { type: Object },
     };
   }
 
@@ -22,10 +23,12 @@ class AnovaCulinary extends LitElement {
     this.recipes = [];
     this.searchQuery = "";
     this.editingRecipe = null;
+    this.activeCook = null;
   }
 
-  firstUpdated() {
-    this._fetchRecipes();
+  async firstUpdated() {
+    await this._fetchRecipes();
+    await this._fetchActiveCook();
   }
 
   async _fetchRecipes() {
@@ -40,6 +43,24 @@ class AnovaCulinary extends LitElement {
     }
   }
 
+  async _fetchActiveCook() {
+    if (!this.hass) return;
+    try {
+      const active = await this.hass.connection.sendMessagePromise({
+        type: `${this.panel.config.domain}/cook`
+      });
+      if (active) {
+        // Only show if it doesn't match an existing local recipe ID
+        const isKnown = this.recipes.some(r => r.id === active.id);
+        if (!isKnown) {
+          this.activeCook = active;
+        }
+      }
+    } catch (e) {
+      console.error("Failed fetching active cook from websocket", e);
+    }
+  }
+
   _handleSearch(e) {
     this.searchQuery = e.target.value.toLowerCase();
   }
@@ -50,6 +71,15 @@ class AnovaCulinary extends LitElement {
 
   _startEdit(recipe) {
     this.editingRecipe = { ...recipe };
+  }
+
+  _importCook() {
+    if (!this.activeCook) return;
+    const importedRecipe = { ...this.activeCook, id: null };
+    if (!importedRecipe.name) importedRecipe.name = "Imported Cook";
+    this.editingRecipe = importedRecipe;
+    this.activeCook = null;
+    this.requestUpdate();
   }
 
   _addStage() {
@@ -157,6 +187,21 @@ class AnovaCulinary extends LitElement {
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               <input type="text" placeholder="Search recipes..." @input=${this._handleSearch} .value=${this.searchQuery} />
             </div>
+
+            ${this.activeCook ? html`
+              <div class="active-cook-banner slide-in">
+                <div class="banner-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div class="banner-text">
+                  <h3>Unknown Cook Detected</h3>
+                  <p>Your oven is running a multi-stage recipe that isn't in your library.</p>
+                </div>
+                <button class="btn-primary glow" style="margin-left:auto;" @click=${this._importCook}>
+                  Import Recipe
+                </button>
+              </div>
+            ` : ''}
 
             <ul class="recipe-list">
               ${filtered.length === 0 ? html`<div class="empty-state">No recipes found. Create one to begin.</div>` : ''}
@@ -646,6 +691,40 @@ class AnovaCulinary extends LitElement {
         background: var(--card-bg);
         border-radius: 14px;
         border: 1px dashed var(--glass-border);
+      }
+
+      /* Banner */
+      .active-cook-banner {
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        gap: 16px;
+      }
+      .banner-icon {
+        background: rgba(59, 130, 246, 0.2);
+        color: var(--accent);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .banner-text h3 {
+        font-size: 1.1rem;
+        color: var(--accent-hover);
+        margin: 0 0 4px 0;
+        font-family: 'Outfit', sans-serif;
+      }
+      .banner-text p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.9rem;
       }
 
       /* Animations */
