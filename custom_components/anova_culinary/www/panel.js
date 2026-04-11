@@ -278,7 +278,6 @@ class AnovaCulinary extends LitElement {
           <div class="data-table">
             <div class="table-header">
               <div class="col" style="flex:2; padding-left:16px;">Recipe</div>
-              <div class="col" style="flex:1;">Status</div>
               <div class="col" style="flex:1;">Stages</div>
               <div class="col" style="width:160px; text-align:right; padding-right:16px;"></div>
             </div>
@@ -292,7 +291,6 @@ class AnovaCulinary extends LitElement {
                   </div>
                   ${r.name}
                 </div>
-                <div class="col" style="flex:1; color:var(--secondary-text-color);">Ready</div>
                 <div class="col" style="flex:1; color:var(--secondary-text-color);">${r.stages ? r.stages.length : 0} defined</div>
                 <div class="col" style="width:160px; text-align:right; padding-right:16px;">
                   <div class="row-actions">
