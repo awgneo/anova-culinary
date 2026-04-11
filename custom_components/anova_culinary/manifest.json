@@ -1,13 +1,15 @@
 {
   "domain": "anova_culinary",
   "name": "Anova Culinary",
-  "codeowners": ["@awgneo"],
+  "codeowners": [
+    "@awgneo"
+  ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/awgneo/anova",
+  "documentation": "https://github.com/awgneo/anova-culinary",
   "integration_type": "hub",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/awgneo/anova/issues",
+  "issue_tracker": "https://github.com/awgneo/anova-culinary/issues",
   "quality_scale": "platinum",
   "requirements": [],
   "version": "1.0.0"

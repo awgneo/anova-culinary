@@ -86,11 +86,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     ws.async_setup(hass)
 
-    # Register the custom frontend panel
     # We will serve the panel assets from the www directory
     try:
         domain_hyphen = DOMAIN.replace("_", "-")
         www_dir = os.path.join(os.path.dirname(__file__), "www")
+        panel_path = os.path.join(www_dir, "panel.js")
+        
+        # Always cache break using file modification time
+        cache_buster = str(int(os.path.getmtime(panel_path))) if os.path.exists(panel_path) else "1"
+        
         await hass.http.async_register_static_paths([
             StaticPathConfig(f"/{domain_hyphen}", www_dir, False)
         ])
@@ -100,7 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             webcomponent_name=domain_hyphen,
             sidebar_title="Anova",
             sidebar_icon="mdi:stove",
-            module_url=f"/{domain_hyphen}/panel.js",
+            module_url=f"/{domain_hyphen}/panel.js?v={cache_buster}",
             embed_iframe=False,
             require_admin=False,
             config={"domain": DOMAIN}
