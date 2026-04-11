@@ -89,7 +89,7 @@ class AnovaCulinary extends LitElement {
         else if (value === 'timer') stage.advance = { duration: 3600, trigger: "manually" };
         else if (value === 'probe') stage.advance = { target: 50.0 };
     } else if (stage.advance) {
-        if (field === 'duration') stage.advance.duration = parseInt(value) || 0;
+        if (field === 'duration_mins') stage.advance.duration = (parseInt(value) || 0) * 60;
         if (field === 'trigger') stage.advance.trigger = value;
         if (field === 'target') stage.advance.target = parseFloat(value) || 0.0;
     }
@@ -271,13 +271,14 @@ class AnovaCulinary extends LitElement {
 
                         ${stage.advance && stage.advance.duration !== undefined ? html`
                         <div class="form-group slide-in">
-                            <label>TIMER DURATION (SEC)</label>
-                            <input type="number" step="1" .value=${stage.advance.duration} @input=${e => this._updateAdvance(i, 'duration', e.target.value)} />
+                            <label>TIMER DURATION (MIN)</label>
+                            <input type="number" step="1" .value=${Math.floor(stage.advance.duration / 60)} @input=${e => this._updateAdvance(i, 'duration_mins', e.target.value)} />
                         </div>
                         <div class="form-group slide-in">
                             <label>TIMER TRIGGER</label>
                             <select .value=${stage.advance.trigger} @change=${e => this._updateAdvance(i, 'trigger', e.target.value)}>
-                                <option value="manually">Manual / Immediate</option>
+                                <option value="immediately">Immediately</option>
+                                <option value="manually">Manually</option>
                                 <option value="preheated">When Preheated</option>
                                 <option value="food_detected">On Food Detected</option>
                             </select>
