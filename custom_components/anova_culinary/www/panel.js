@@ -118,8 +118,8 @@ class AnovaCulinary extends LitElement {
 
   _exportRecipe(recipe) {
     if (!recipe) return;
-    const exportData = { 
-      name: recipe.name || "Untitled Recipe", 
+    const exportData = {
+      name: recipe.name || "Untitled Recipe",
       stages: recipe.stages || []
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
@@ -143,7 +143,15 @@ class AnovaCulinary extends LitElement {
   _importCook() {
     if (!this.activeCook) return;
     const importedRecipe = { ...this.activeCook, id: null };
-    if (!importedRecipe.name) importedRecipe.name = "Imported Cook";
+
+    // The python backend will sometimes send `title` instead of `name` depending on the mashumaro alias settings!
+    const validName = importedRecipe.name || importedRecipe.title || importedRecipe.cookTitle;
+    if (validName) {
+      importedRecipe.name = validName;
+    } else {
+      importedRecipe.name = "Imported Cook";
+    }
+
     this.editingRecipe = this._normalizeUnits(importedRecipe);
     this.activeCook = null;
     this.requestUpdate();

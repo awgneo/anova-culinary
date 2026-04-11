@@ -58,6 +58,8 @@ class AnovaPORecipe(DataClassDictMixin):
     id: str = ""
     title: str = field(default="", metadata=field_options(alias="name"))
     stages: List[AnovaPOStage] = field(default_factory=list)
+    class Config:
+        serialize_by_alias = True
 
 @dataclass
 class AnovaPOCook:
