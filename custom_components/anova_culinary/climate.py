@@ -148,7 +148,7 @@ class AnovaOven(ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target hvac mode."""
         if hvac_mode == HVACMode.OFF:
-            await self._client.stop_apo_cook(self._device.id)
+            await self._client.stop_cook(self._device.id)
         elif hvac_mode == HVACMode.HEAT:
             targ = self._attr_target_temperature
             if not targ:  # Catches 0.0 or None
