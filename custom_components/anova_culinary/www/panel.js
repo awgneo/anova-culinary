@@ -43,6 +43,33 @@ class AnovaCulinary extends LitElement {
     }
   }
 
+  _getGlobalUnit() {
+    return (this.hass && this.hass.config && this.hass.config.unit_system && this.hass.config.unit_system.temperature && this.hass.config.unit_system.temperature.includes('F')) ? 'F' : 'C';
+  }
+
+  _normalizeUnits(recipe) {
+    const targetUnit = this._getGlobalUnit();
+    const cloned = JSON.parse(JSON.stringify(recipe));
+    if (cloned.stages) {
+      cloned.stages.forEach(stage => {
+        if (!stage.temperature_unit) stage.temperature_unit = 'C';
+        if (targetUnit === 'F' && stage.temperature_unit === 'C') {
+          stage.temperature = Math.round(((stage.temperature * 9 / 5) + 32) * 10) / 10;
+          if (stage.advance && stage.advance.target !== undefined) {
+            stage.advance.target = Math.round(((stage.advance.target * 9 / 5) + 32) * 10) / 10;
+          }
+        } else if (targetUnit === 'C' && stage.temperature_unit === 'F') {
+          stage.temperature = Math.round(((stage.temperature - 32) * 5 / 9) * 10) / 10;
+          if (stage.advance && stage.advance.target !== undefined) {
+            stage.advance.target = Math.round(((stage.advance.target - 32) * 5 / 9) * 10) / 10;
+          }
+        }
+        stage.temperature_unit = targetUnit;
+      });
+    }
+    return cloned;
+  }
+
   async _fetchActiveCook() {
     if (!this.hass) return;
     try {
@@ -70,14 +97,14 @@ class AnovaCulinary extends LitElement {
   }
 
   _startEdit(recipe) {
-    this.editingRecipe = { ...recipe };
+    this.editingRecipe = this._normalizeUnits(recipe);
   }
 
   _importCook() {
     if (!this.activeCook) return;
     const importedRecipe = { ...this.activeCook, id: null };
     if (!importedRecipe.name) importedRecipe.name = "Imported Cook";
-    this.editingRecipe = importedRecipe;
+    this.editingRecipe = this._normalizeUnits(importedRecipe);
     this.activeCook = null;
     this.requestUpdate();
   }
@@ -87,8 +114,8 @@ class AnovaCulinary extends LitElement {
     this.editingRecipe.stages = [...this.editingRecipe.stages, {
       id: crypto.randomUUID ? crypto.randomUUID() : "uuid-1234",
       sous_vide: false,
-      temperature: 75.0,
-      temperature_unit: "C",
+      temperature: this._getGlobalUnit() === 'F' ? 140.0 : 60.0,
+      temperature_unit: this._getGlobalUnit(),
       steam: 0,
       heating_elements: "rear",
       fan: "high",
@@ -113,15 +140,15 @@ class AnovaCulinary extends LitElement {
   _updateAdvance(index, field, value) {
     if (!this.editingRecipe) return;
     const stage = this.editingRecipe.stages[index];
-    
+
     if (field === 'type') {
-        if (value === 'none') stage.advance = null;
-        else if (value === 'timer') stage.advance = { duration: 3600, trigger: "manually" };
-        else if (value === 'probe') stage.advance = { target: 50.0 };
+      if (value === 'none') stage.advance = null;
+      else if (value === 'timer') stage.advance = { duration: 3600, trigger: "manually" };
+      else if (value === 'probe') stage.advance = { target: this._getGlobalUnit() === 'F' ? 120.0 : 50.0 };
     } else if (stage.advance) {
-        if (field === 'duration_mins') stage.advance.duration = (parseInt(value) || 0) * 60;
-        if (field === 'trigger') stage.advance.trigger = value;
-        if (field === 'target') stage.advance.target = parseFloat(value) || 0.0;
+      if (field === 'duration_mins') stage.advance.duration = (parseInt(value) || 0) * 60;
+      if (field === 'trigger') stage.advance.trigger = value;
+      if (field === 'target') stage.advance.target = parseFloat(value) || 0.0;
     }
     this.requestUpdate();
   }
@@ -137,6 +164,7 @@ class AnovaCulinary extends LitElement {
 
     try {
       const type = this.editingRecipe.id ? `${this.panel.config.domain}/recipes/update` : `${this.panel.config.domain}/recipes/create`;
+
       const payload = {
         type: type,
         name: this.editingRecipe.name,
@@ -270,12 +298,9 @@ class AnovaCulinary extends LitElement {
 
                         <div class="form-group">
                             <label>TEMPERATURE</label>
-                            <div style="display:flex;gap:4px;">
-                              <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="flex:1;" />
-                              <select .value=${stage.temperature_unit || "C"} @change=${e => this._updateStage(i, 'temperature_unit', e.target.value)} style="width:60px;">
-                                <option value="C">C</option>
-                                <option value="F">F</option>
-                              </select>
+                            <div style="position:relative; display:flex;">
+                              <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="width:100%; padding-right:45px;" />
+                              <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600; pointer-events:none;">°${this._getGlobalUnit()}</span>
                             </div>
                         </div>
                         
@@ -287,6 +312,7 @@ class AnovaCulinary extends LitElement {
                         <div class="form-group">
                             <label>HEATING ELEMENTS</label>
                             <select .value=${stage.heating_elements} @change=${e => this._updateStage(i, 'heating_elements', e.target.value)}>
+                                <option value="top">Top</option>
                                 <option value="rear">Rear</option>
                                 <option value="bottom">Bottom</option>
                                 <option value="top+rear">Top + Rear</option>
@@ -333,7 +359,10 @@ class AnovaCulinary extends LitElement {
                         ${stage.advance && stage.advance.target !== undefined ? html`
                         <div class="form-group slide-in">
                             <label>PROBE TARGET</label>
-                            <input type="number" step="0.1" .value=${stage.advance.target} @input=${e => this._updateAdvance(i, 'target', e.target.value)} />
+                            <div style="position:relative; display:flex;">
+                              <input type="number" step="0.1" .value=${stage.advance.target} @input=${e => this._updateAdvance(i, 'target', e.target.value)} style="width:100%; padding-right:45px;" />
+                              <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-weight:600; pointer-events:none;">°${this._getGlobalUnit()}</span>
+                            </div>
                         </div>
                         ` : ''}
 
