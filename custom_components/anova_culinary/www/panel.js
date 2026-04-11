@@ -447,304 +447,251 @@ class AnovaCulinary extends LitElement {
 
   static get styles() {
     return css`
-      @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Inter:wght@400;500&display=swap');
-
-      * {
-          box-sizing: border-box;
-      }
+      /* Switch to Home Assistant Native Theming approach */
+      * { box-sizing: border-box; }
 
       :host {
         display: block;
         min-height: 100vh;
-        --bg-color: #0f1115;
-        --glass-bg: rgba(26, 29, 36, 0.75);
-        --glass-border: rgba(255, 255, 255, 0.08);
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --accent: #3b82f6;
-        --accent-hover: #60a5fa;
-        --accent-glow: rgba(59, 130, 246, 0.4);
-        --danger: #ef4444;
-        --danger-hover: #f87171;
-        --card-bg: rgba(255, 255, 255, 0.03);
-        --input-bg: rgba(0, 0, 0, 0.2);
+        background-color: var(--primary-background-color, #111111);
+        color: var(--primary-text-color, #e1e1e1);
+        font-family: var(--paper-font-body1_-_font-family, 'Roboto', 'Noto', sans-serif);
+        font-size: 14px;
+        line-height: var(--paper-font-body1_-_line-height, 20px);
       }
 
-      .app-background {
-        background: radial-gradient(circle at top right, #1e293b 0%, var(--bg-color) 40%);
-        min-height: 100vh;
-        padding: 40px 20px;
-        color: var(--text-main);
-        font-family: 'Inter', sans-serif;
-      }
-
-      .glass-container {
-        max-width: 900px;
-        margin: 0 auto;
-        background: var(--glass-bg);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid var(--glass-border);
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      }
-
-      h1 {
-        font-family: 'Outfit', sans-serif;
-        font-size: 2.5rem;
-        font-weight: 600;
-        margin: 0;
-        background: linear-gradient(to right, #fff, #94a3b8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-
-      h3 {
-        font-family: 'Outfit', sans-serif;
-        font-size: 1.5rem;
-        font-weight: 500;
-        margin: 0;
-      }
-
-      .header, .stages-header {
+      .page {
         display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        background-color: var(--primary-background-color);
+      }
+
+      /* Toolbar mimicking HA app-header / Data Table toolbar */
+      .toolbar {
+        display: flex;
+        align-items: center;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 32px;
-      }
-      
-      .stages-header {
-          margin-top: 40px;
-          margin-bottom: 24px;
-          border-bottom: 1px solid var(--glass-border);
-          padding-bottom: 12px;
+        padding: 8px 16px;
+        height: 64px;
+        background-color: var(--app-header-background-color, var(--card-background-color, #1e1e1e));
+        border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+        color: var(--app-header-text-color, var(--primary-text-color));
       }
 
-      /* Buttons */
-      button {
+      .toolbar-title {
+        font-size: 20px;
+        font-weight: 400;
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
-        font-size: 0.95rem;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      
-      button svg {
-          width: 18px;
-          height: 18px;
       }
 
-      .btn-primary {
-        background: linear-gradient(135deg, var(--accent), #2563eb);
-        color: white;
-      }
-
-      .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -10px var(--accent-glow);
-      }
-
-      .btn-secondary {
-        background: var(--card-bg);
-        color: var(--text-main);
-        border: 1px solid var(--glass-border);
-      }
-
-      .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-
-      .btn-ghost {
-        background: transparent;
-        color: var(--text-muted);
-      }
-
-      .btn-ghost:hover {
-        color: var(--text-main);
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      .btn-danger {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-        padding: 10px;
-      }
-
-      .btn-danger:hover {
-        background: var(--danger);
-        color: white;
-      }
-      
-      .btn-icon-danger {
-          background: transparent;
-          color: var(--text-muted);
-          padding: 6px;
-      }
-      .btn-icon-danger:hover {
-          color: var(--danger);
-          background: rgba(239, 68, 68, 0.1);
-      }
-
-      .action-group {
-        display: flex;
-        gap: 12px;
-      }
-
-      /* Search */
       .search-bar {
         position: relative;
-        margin-bottom: 32px;
+        flex: 1;
+        max-width: 400px;
+        display: flex;
+        align-items: center;
       }
 
       .search-icon {
         position: absolute;
         left: 16px;
-        top: 50%;
-        transform: translateY(-50%);
         width: 20px;
         height: 20px;
-        stroke: var(--text-muted);
+        stroke: var(--secondary-text-color, #9e9e9e);
       }
 
       .search-bar input {
         width: 100%;
-        padding: 16px 16px 16px 48px;
-        font-size: 1.1rem;
-        font-family: 'Inter', sans-serif;
-        background: var(--input-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        color: var(--text-main);
+        padding: 10px 16px 10px 48px;
+        font-size: 14px;
+        font-family: inherit;
+        background: var(--card-background-color, rgba(255, 255, 255, 0.05));
+        border: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+        border-radius: 20px;
+        color: var(--primary-text-color);
         transition: border-color 0.2s;
       }
 
       .search-bar input:focus {
         outline: none;
-        border-color: var(--accent);
+        border-color: var(--primary-color, #03a9f4);
       }
 
-      /* Lists */
-      .recipe-list {
-        list-style: none;
+      .action-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      /* Buttons (HA Material Style) */
+      .mwc-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        height: 36px;
+        font-family: inherit;
+        font-weight: 500;
+        font-size: 14px;
+        letter-spacing: 0.0125em;
+        text-transform: uppercase;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background: transparent;
+        color: var(--primary-color, #03a9f4);
+        transition: background-color 0.2s, box-shadow 0.2s;
+      }
+
+      .mwc-button:hover {
+        background-color: rgba(3, 169, 244, 0.08); /* Primary color low opacity */
+      }
+
+      .mwc-button.primary {
+        background-color: var(--primary-color, #03a9f4);
+        color: var(--text-primary-color, #ffffff);
+        box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.12), 0 1px 5px 0 rgba(0, 0, 0, 0.2);
+      }
+
+      .mwc-button.primary:hover {
+        background-color: var(--dark-primary-color, #0288d1);
+      }
+      
+      .mwc-button.outline {
+          border: 1px solid var(--primary-color, #03a9f4);
+      }
+
+      .mwc-button svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .icon-btn {
+        background: transparent;
+        border: none;
+        color: var(--secondary-text-color, #9e9e9e);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s, color 0.2s;
+      }
+
+      .icon-btn svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      .icon-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--primary-text-color);
+      }
+
+      .icon-btn.danger:hover {
+        background: rgba(244, 67, 54, 0.1);
+        color: var(--error-color, #f44336);
+      }
+
+      .row-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 4px;
+      }
+
+      /* Data Table */
+      .content {
         padding: 0;
-        margin: 0;
+      }
+
+      .data-table {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        width: 100%;
+        background: var(--card-background-color, #1e1e1e);
       }
 
-      .recipe-item {
+      .table-header {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px;
-        background: var(--card-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: 14px;
-        transition: transform 0.2s, background 0.2s;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--secondary-text-color, #9e9e9e);
+        padding: 16px 0;
+        border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+        border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
       }
 
-      .recipe-item:hover {
-        transform: translateX(4px);
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      .recipe-info {
+      .table-row {
         display: flex;
         align-items: center;
-        gap: 16px;
+        min-height: 48px;
+        border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
+        padding: 4px 0;
+        transition: background-color 0.2s;
       }
 
-      .recipe-icon {
-        background: rgba(59, 130, 246, 0.1);
-        color: var(--accent);
-        padding: 10px;
-        border-radius: 10px;
+      .table-row:hover {
+        background-color: var(--secondary-background-color, rgba(255, 255, 255, 0.03));
+      }
+
+      .type-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-      }
-
-      .recipe-name {
-        font-size: 1.1rem;
-        font-weight: 500;
-      }
-
-      /* Editor Form */
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 20px;
-      }
-
-      .form-group label {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-
-      .hero-input input {
-        font-size: 1.5rem;
-        padding: 16px;
-        background: var(--input-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: 12px;
-        color: var(--text-main);
-        width: 100%;
-        transition: border-color 0.2s;
+        width: 40px;
+        height: 40px;
+        background-color: rgba(120, 120, 120, 0.1);
+        border-radius: 50%;
+        color: var(--secondary-text-color);
       }
       
-      .hero-input input:focus {
-          outline: none;
-          border-color: var(--accent);
+      .type-icon svg {
+          width: 20px;
+          height: 20px;
       }
 
-      /* Stages Grid */
-      .stages-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 24px;
-        margin-bottom: 32px;
+      /* Forms (ha-card mimicking) */
+      .ha-card {
+        background: var(--card-background-color, #1e1e1e);
+        border-radius: var(--ha-card-border-radius, 12px);
+        box-shadow: var(--ha-card-box-shadow, 0px 2px 1px -1px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12));
+        color: var(--primary-text-color);
+        margin: 16px;
+        display: block;
       }
 
-      .stage-card {
-        background: var(--card-bg);
-        border: 1px dashed var(--glass-border);
-        border-radius: 16px;
-        padding: 24px;
-        transition: border-color 0.2s;
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 16px 0 16px;
       }
 
-      .stage-card:hover {
-        border-color: rgba(255, 255, 255, 0.2);
+      .card-content {
+        padding: 16px;
       }
 
-      .stage-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 20px;
+      .stages-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        margin: 16px 16px 0 16px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      
+      .stages-header h3 {
+          margin: 0;
+          font-weight: 500;
       }
 
       .stage-badge {
-          background: var(--accent);
-          color: white;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
+        font-weight: 500;
+        font-size: 16px;
+        color: var(--primary-color);
       }
 
       .stage-grid-inner {
@@ -752,91 +699,98 @@ class AnovaCulinary extends LitElement {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 16px;
       }
-      
-      .stage-grid-inner .form-group {
-          margin-bottom: 0;
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 12px;
       }
 
-      .stage-grid-inner input, .stage-grid-inner select {
-        padding: 12px;
-        background: var(--input-bg);
-        border: 1px solid var(--glass-border);
-        border-radius: 8px;
-        color: var(--text-main);
-        font-family: 'Inter', sans-serif;
-        font-size: 1rem;
+      .form-group label {
+        font-size: 12px;
+        color: var(--secondary-text-color, #9e9e9e);
+        font-weight: 500;
+      }
+
+      input, select {
+        padding: 10px 12px;
+        background: var(--secondary-background-color, #2b2b2b);
+        border: 1px solid var(--divider-color);
+        border-radius: 4px;
+        color: var(--primary-text-color);
+        font-family: inherit;
+        font-size: 14px;
         width: 100%;
+        box-sizing: border-box;
       }
       
-      .stage-grid-inner input:focus, .stage-grid-inner select:focus {
-          outline: none;
-          border-color: var(--accent);
-      }
-      
-      .stage-grid-inner input:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+      .hero-input input {
+          font-size: 18px;
+          padding: 14px 16px;
       }
 
-      /* Empty States */
+      input:focus, select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
+
+      input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .unit {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--secondary-text-color);
+        pointer-events: none;
+      }
+
       .empty-state {
         text-align: center;
-        padding: 40px;
-        color: var(--text-muted);
+        padding: 48px;
+        color: var(--secondary-text-color);
         font-style: italic;
-        background: var(--card-bg);
-        border-radius: 14px;
-        border: 1px dashed var(--glass-border);
       }
 
-      /* Banner */
       .active-cook-banner {
         display: flex;
         align-items: center;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 24px;
+        background-color: rgba(3, 169, 244, 0.1);
+        border-bottom: 1px solid rgba(3, 169, 244, 0.3);
+        padding: 16px 24px;
         gap: 16px;
       }
       .banner-icon {
-        background: rgba(59, 130, 246, 0.2);
-        color: var(--accent);
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        color: var(--primary-color);
       }
       .banner-text h3 {
-        font-size: 1.1rem;
-        color: var(--accent-hover);
         margin: 0 0 4px 0;
-        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: 500;
       }
       .banner-text p {
         margin: 0;
-        color: var(--text-muted);
-        font-size: 0.9rem;
+        color: var(--secondary-text-color);
       }
 
       /* Animations */
       @keyframes slideIn {
-        from { opacity: 0; transform: translateX(-10px); }
-        to { opacity: 1; transform: translateX(0); }
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
       }
       @keyframes popIn {
         from { opacity: 0; transform: scale(0.98); }
         to { opacity: 1; transform: scale(1); }
       }
       .slide-in {
-        animation: slideIn 0.3s ease-out forwards;
+        animation: slideIn 0.2s ease-out forwards;
       }
       .pop-in {
-        animation: popIn 0.3s ease-out forwards;
+        animation: popIn 0.2s ease-out forwards;
       }
     `;
   }
