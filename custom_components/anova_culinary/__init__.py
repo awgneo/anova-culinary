@@ -90,52 +90,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
-        "recipes": []
+        "recipes": None
     }
 
-    # Setup recipe storage collection
-    store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
-    collection = APORecipeCollection(store)
-    await collection.async_load()
-    hass.data[DOMAIN][entry.entry_id]["recipes"] = collection
+    if "recipes" not in hass.data[DOMAIN]:
+        # Setup recipe storage collection ONCE globally
+        store = storage.Store(hass, RECIPE_STORAGE_VERSION, RECIPE_STORAGE_KEY)
+        collection = APORecipeCollection(store)
+        await collection.async_load()
+        hass.data[DOMAIN]["recipes"] = collection
 
-    # Register native websockets
-    ws = DictStorageCollectionWebsocket(
-        collection,
-        f"{DOMAIN}/recipes",
-        "recipe",
-        {"name": str, "stages": list},
-        {"name": str, "stages": list}
-    )
-    ws.async_setup(hass)
-    
-    websocket_api.async_register_command(hass, ws_cook)
-
-    # We will serve the panel assets from the www directory
-    try:
-        domain_hyphen = DOMAIN.replace("_", "-")
-        www_dir = os.path.join(os.path.dirname(__file__), "www")
-        panel_path = os.path.join(www_dir, "panel.js")
-        
-        # Always cache break using file modification time
-        cache_buster = str(int(os.path.getmtime(panel_path))) if os.path.exists(panel_path) else "1"
-        
-        await hass.http.async_register_static_paths([
-            StaticPathConfig(f"/{domain_hyphen}", www_dir, False)
-        ])
-        await async_register_panel(
-            hass,
-            frontend_url_path=domain_hyphen,
-            webcomponent_name=domain_hyphen,
-            sidebar_title="Anova",
-            sidebar_icon="mdi:stove",
-            module_url=f"/{domain_hyphen}/panel.js?v={cache_buster}",
-            embed_iframe=False,
-            require_admin=False,
-            config={"domain": DOMAIN}
+        # Register native websockets ONCE globally
+        ws = DictStorageCollectionWebsocket(
+            collection,
+            f"{DOMAIN}/recipes",
+            "recipe",
+            {"name": str, "stages": list},
+            {"name": str, "stages": list}
         )
-    except Exception as e:
-        _LOGGER.warning("Could not register custom panel: %s", e)
+        ws.async_setup(hass)
+        
+        websocket_api.async_register_command(hass, ws_cook)
+
+        # We will serve the panel assets from the www directory
+        try:
+            domain_hyphen = DOMAIN.replace("_", "-")
+            www_dir = os.path.join(os.path.dirname(__file__), "www")
+            panel_path = os.path.join(www_dir, "panel.js")
+            
+            # Always cache break using file modification time
+            cache_buster = str(int(os.path.getmtime(panel_path))) if os.path.exists(panel_path) else "1"
+            
+            await hass.http.async_register_static_paths([
+                StaticPathConfig(f"/{domain_hyphen}", www_dir, False)
+            ])
+            await async_register_panel(
+                hass,
+                frontend_url_path=domain_hyphen,
+                webcomponent_name=domain_hyphen,
+                sidebar_title="Anova",
+                sidebar_icon="mdi:stove",
+                module_url=f"/{domain_hyphen}/panel.js?v={cache_buster}",
+                embed_iframe=False,
+                require_admin=False,
+                config={"domain": DOMAIN}
+            )
+        except Exception as e:
+            _LOGGER.warning("Could not register custom panel: %s", e)
+
+    hass.data[DOMAIN][entry.entry_id]["recipes"] = hass.data[DOMAIN]["recipes"]
 
 
 
