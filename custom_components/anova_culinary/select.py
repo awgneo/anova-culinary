@@ -66,6 +66,7 @@ class AnovaRecipeSelect(SelectEntity):
         self._remove_cb = self._client.register_callback(self._handle_update)
         
         async def _async_collection_changed(changeset) -> None:
+            self.async_write_ha_state()
             self._handle_update(self._device.id)
             
         self._unsub_collection = self.collection.async_add_change_set_listener(_async_collection_changed)
