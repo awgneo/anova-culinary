@@ -127,7 +127,7 @@ class AnovaCulinary extends LitElement {
     const a = document.createElement("a");
     a.href = url;
     const safeName = exportData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    a.download = `apo_recipe_${safeName}.json`;
+    a.download = `${safeName}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
