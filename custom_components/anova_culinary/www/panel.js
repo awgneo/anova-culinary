@@ -92,6 +92,46 @@ class AnovaCulinary extends LitElement {
     this.searchQuery = e.target.value.toLowerCase();
   }
 
+  _triggerFileImport() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = event => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          parsed.id = null; // Strip internal ID so it becomes a new recipe
+          this.editingRecipe = this._normalizeUnits(parsed);
+          this.requestUpdate();
+        } catch (err) {
+          console.error("Failed to parse recipe JSON", err);
+          alert("Invalid recipe file.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  _exportRecipe(recipe) {
+    if (!recipe) return;
+    const exportData = { 
+      name: recipe.name || "Untitled Recipe", 
+      stages: recipe.stages || []
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = exportData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    a.download = `apo_recipe_${safeName}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   _startCreate() {
     this.editingRecipe = { name: "", stages: [] };
   }
@@ -205,10 +245,16 @@ class AnovaCulinary extends LitElement {
           <div class="glass-container">
             <div class="header">
               <h1>Recipes</h1>
-              <button class="btn-primary glow" @click=${this._startCreate}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                New Recipe
-              </button>
+              <div class="action-group">
+                <button class="btn-secondary" @click=${this._triggerFileImport}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Import Recipe
+                </button>
+                <button class="btn-primary glow" @click=${this._startCreate}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                  New Recipe
+                </button>
+              </div>
             </div>
             
             <div class="search-bar">
@@ -243,6 +289,9 @@ class AnovaCulinary extends LitElement {
                   </div>
                   <div class="action-group">
                     <button class="btn-ghost" @click=${() => this._startEdit(r)}>Edit</button>
+                    <button class="btn-ghost" style="padding:6px;" @click=${() => this._exportRecipe(r)} title="Export JSON">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
                     <button class="btn-danger" @click=${() => this._deleteRecipe(r.id, r.name)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
