@@ -107,7 +107,11 @@ class AnovaRecipeSelect(SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
-        if option in ("None", "Manual / App Cook"):
+        if option == "None":
+            await self._client.stop_cook(self._device.id)
+            return
+            
+        if option == "Manual / App Cook":
             # Can't directly start these
             return
 
