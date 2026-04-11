@@ -269,18 +269,18 @@ class AnovaCulinary extends LitElement {
                 <h3>Active Cook Detected</h3>
                 <p>Your oven is currently running a multi-stage cook. Extract and save it to your recipes library?</p>
               </div>
-              <button class="mwc-button primary" @click=${this._importCook}>
-                Import Recipe
+              <button class="mwc-button primary" style="margin-left: auto;" @click=${this._importCook}>
+                Import
               </button>
             </div>
           ` : ''}
 
           <div class="data-table">
             <div class="table-header">
-              <div class="col" style="flex:2; padding-left:16px;">Entity / Recipe</div>
+              <div class="col" style="flex:2; padding-left:16px;">Recipe</div>
               <div class="col" style="flex:1;">Status</div>
               <div class="col" style="flex:1;">Stages</div>
-              <div class="col" style="width:160px; text-align:right; padding-right:16px;">Actions</div>
+              <div class="col" style="width:160px; text-align:right; padding-right:16px;"></div>
             </div>
             
             ${filtered.length === 0 ? html`<div class="empty-state">No recipes found.</div>` : ''}
@@ -331,7 +331,7 @@ class AnovaCulinary extends LitElement {
            </div>
         </div>
 
-        <div class="content" style="max-width:900px; margin: 0 auto; padding-top: 24px;">
+        <div class="content" style="max-width:1040px; width:100%; margin: 0 auto; padding-top: 24px;">
             <div class="ha-card form-card">
               <div class="card-content">
                   <div class="form-group hero-input">
@@ -473,7 +473,7 @@ class AnovaCulinary extends LitElement {
         align-items: center;
         justify-content: space-between;
         padding: 8px 16px;
-        height: 64px;
+        height: var(--header-height, 56px);
         background-color: var(--app-header-background-color, var(--card-background-color, #1e1e1e));
         border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
         color: var(--app-header-text-color, var(--primary-text-color));
