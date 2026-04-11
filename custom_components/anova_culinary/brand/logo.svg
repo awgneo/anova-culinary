@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="anova-logo-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 245.05 263.72">
+<svg id="anova-logo-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 260 260">
   <!-- Generator: Adobe Illustrator 30.2.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 1)  -->
   <defs>
     <style>
@@ -140,19 +140,19 @@
     <filter id="blur12" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="12"/>
     </filter>
-    <linearGradient id="linear-gradient" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient" x1="-14.29" y1="346" x2="-13.29" y2="345" gradientTransform="translate(2795.41 77245.6) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#242834"/>
       <stop offset=".5" stop-color="#151820"/>
       <stop offset="1" stop-color="#0a0c11"/>
     </linearGradient>
-    <linearGradient id="linear-gradient1" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient1" x1="-14.29" y1="346" x2="-13.29" y2="345" gradientTransform="translate(2795.41 77245.6) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4a5568" stop-opacity=".8"/>
       <stop offset="1" stop-color="#1a202c" stop-opacity=".8"/>
     </linearGradient>
     <clipPath id="clippath">
-      <polygon class="st0" points="122.23 20.26 218.85 76.06 218.85 187.66 122.23 243.46 25.61 187.66 25.61 76.06 122.23 20.26"/>
+      <polygon class="st0" points="129.71 18.4 226.33 74.2 226.33 185.8 129.71 241.6 33.08 185.8 33.08 74.2 129.71 18.4"/>
     </clipPath>
-    <linearGradient id="linear-gradient2" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(4410.25 41454.28) scale(201.6 -118.8)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient2" x1="-13.79" y1="346" x2="-13.79" y2="345" gradientTransform="translate(2910.61 41231.2) scale(201.6 -118.8)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#0af" stop-opacity=".6"/>
       <stop offset=".5" stop-color="#04b" stop-opacity=".4"/>
       <stop offset="1" stop-color="#003" stop-opacity=".1"/>
@@ -160,12 +160,12 @@
     <filter id="blur121" data-name="blur12" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="12"/>
     </filter>
-    <radialGradient id="radial-gradient" cx="-21.27" cy="347.36" fx="-21.27" fy="347.36" r=".5" gradientTransform="translate(2572.53 15188.31) scale(115.2 -43.2)" gradientUnits="userSpaceOnUse">
+    <radialGradient id="radial-gradient" cx="-13.79" cy="345.5" fx="-13.79" fy="345.5" r=".5" gradientTransform="translate(1718.8 15106) scale(115.2 -43.2)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ff3d00" stop-opacity=".9"/>
       <stop offset=".5" stop-color="#ff7300" stop-opacity=".4"/>
       <stop offset="1" stop-color="#ff3d00" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="linear-gradient3" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(4410.25 38956.88) scale(201.6 -111.6)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient3" x1="-13.79" y1="346" x2="-13.79" y2="345" gradientTransform="translate(2910.61 38747.2) scale(201.6 -111.6)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#00e5ff" stop-opacity=".85"/>
       <stop offset=".4" stop-color="#08f" stop-opacity=".6"/>
       <stop offset="1" stop-color="#014" stop-opacity=".2"/>
@@ -183,12 +183,12 @@
     <filter id="blur122" data-name="blur12" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="12"/>
     </filter>
-    <linearGradient id="linear-gradient4" x1="-21.27" y1="347.86" x2="-21.27" y2="346.86" gradientTransform="translate(2725.67 45142.8) scale(122.4 -129.6)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient4" x1="-13.79" y1="346" x2="-13.79" y2="345" gradientTransform="translate(1818.11 44899.6) scale(122.4 -129.6)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffca28"/>
       <stop offset=".4" stop-color="#ff9800"/>
       <stop offset="1" stop-color="#ff3d00"/>
     </linearGradient>
-    <linearGradient id="linear-gradient5" x1="-21.77" y1="347.86" x2="-20.77" y2="346.86" gradientTransform="translate(4232.6 77663.09) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient5" x1="-14.29" y1="346" x2="-13.29" y2="345" gradientTransform="translate(2795.41 77245.6) scale(193.25 -223.2)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fff" stop-opacity=".15"/>
       <stop offset=".3" stop-color="#fff" stop-opacity=".05"/>
       <stop offset=".3" stop-color="#fff" stop-opacity="0"/>
@@ -196,49 +196,49 @@
     </linearGradient>
   </defs>
   <g class="st6">
-    <polygon points="122.23 27.46 218.85 83.26 218.85 194.86 122.23 250.66 25.61 194.86 25.61 83.26 122.23 27.46"/>
+    <polygon points="129.71 25.6 226.33 81.4 226.33 193 129.71 248.8 33.08 193 33.08 81.4 129.71 25.6"/>
   </g>
-  <path class="st22" d="M122.23,20.26l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6L122.23,20.26Z"/>
+  <path class="st22" d="M129.71,18.4l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6l96.62-55.8Z"/>
   <g class="st25">
-    <path class="st4" d="M122.23,20.26v32.4"/>
-    <path class="st4" d="M64.63,95.86h28.8l14.4,14.4"/>
-    <path class="st4" d="M179.83,95.86h-28.8l-14.4,14.4"/>
-    <circle class="st16" cx="64.63" cy="95.86" r="2.16"/>
-    <circle class="st16" cx="179.83" cy="95.86" r="2.16"/>
-    <circle class="st3" cx="122.23" cy="131.86" r="79.2"/>
+    <path class="st4" d="M129.71,18.4v32.4"/>
+    <path class="st4" d="M72.11,94h28.8l14.4,14.4"/>
+    <path class="st4" d="M187.31,94h-28.8l-14.4,14.4"/>
+    <circle class="st16" cx="72.11" cy="94" r="2.16"/>
+    <circle class="st16" cx="187.31" cy="94" r="2.16"/>
+    <circle class="st3" cx="129.71" cy="130" r="79.2"/>
   </g>
   <g class="st26">
     <g>
-      <path class="st17" d="M21.43,139.06c24,14.4,46.8,14.4,68.4,0s43.2-14.4,64.8,0,44.4,14.4,68.4,0v108H21.43v-108Z"/>
+      <path class="st17" d="M28.91,137.2c24,14.4,46.8,14.4,68.4,0s43.2-14.4,64.8,0,44.4,14.4,68.4,0v108H28.91v-108Z"/>
       <g class="st10">
-        <ellipse class="st21" cx="122.23" cy="182.26" rx="57.6" ry="21.6"/>
+        <ellipse class="st21" cx="129.71" cy="180.4" rx="57.6" ry="21.6"/>
       </g>
-      <path class="st18" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0v100.8H21.43v-100.8Z"/>
+      <path class="st18" d="M28.91,144.4c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0v100.8H28.91v-100.8Z"/>
       <g class="st13">
-        <path class="st5" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
+        <path class="st5" d="M28.91,144.4c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
       </g>
-      <path class="st1" d="M21.43,146.26c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
+      <path class="st1" d="M28.91,144.4c24-14.4,46.8-14.4,68.4,0s43.2,14.4,64.8,0,44.4-14.4,68.4,0"/>
       <g>
-        <circle class="st12" cx="64.63" cy="211.06" r="2.52"/>
-        <circle class="st14" cx="75.43" cy="182.26" r="1.44"/>
-        <circle class="st15" cx="53.83" cy="167.86" r="1.8"/>
-        <circle class="st9" cx="100.63" cy="193.06" r="5.76"/>
-        <circle class="st8" cx="100.63" cy="193.06" r="2.88"/>
-        <circle class="st14" cx="111.43" cy="171.46" r="1.44"/>
-        <circle class="st15" cx="133.03" cy="196.66" r="2.16"/>
-        <circle class="st12" cx="143.83" cy="164.26" r="3.24"/>
-        <circle class="st15" cx="176.23" cy="218.26" r="2.16"/>
-        <circle class="st14" cx="187.03" cy="175.06" r="1.8"/>
+        <circle class="st12" cx="72.11" cy="209.2" r="2.52"/>
+        <circle class="st14" cx="82.91" cy="180.4" r="1.44"/>
+        <circle class="st15" cx="61.31" cy="166" r="1.8"/>
+        <circle class="st9" cx="108.11" cy="191.2" r="5.76"/>
+        <circle class="st8" cx="108.11" cy="191.2" r="2.88"/>
+        <circle class="st14" cx="118.91" cy="169.6" r="1.44"/>
+        <circle class="st15" cx="140.51" cy="194.8" r="2.16"/>
+        <circle class="st12" cx="151.31" cy="162.4" r="3.24"/>
+        <circle class="st15" cx="183.71" cy="216.4" r="2.16"/>
+        <circle class="st14" cx="194.51" cy="173.2" r="1.8"/>
       </g>
     </g>
   </g>
   <g class="st7">
-    <polygon class="st23" points="106.03 59.86 138.43 59.86 183.43 189.46 151.03 189.46 122.23 106.52 93.43 189.46 61.03 189.46 106.03 59.86"/>
+    <polygon class="st23" points="113.51 58 145.91 58 190.91 187.6 158.51 187.6 129.71 104.66 100.91 187.6 68.51 187.6 113.51 58"/>
   </g>
   <g class="st11">
-    <polygon class="st24" points="106.03 59.86 138.43 59.86 183.43 189.46 151.03 189.46 122.23 106.52 93.43 189.46 61.03 189.46 106.03 59.86"/>
+    <polygon class="st24" points="113.51 58 145.91 58 190.91 187.6 158.51 187.6 129.71 104.66 100.91 187.6 68.51 187.6 113.51 58"/>
   </g>
-  <path class="st20" d="M106.03,59.86h32.4l45,129.6h-32.4l-28.8-82.94-28.8,82.94h-32.4L106.03,59.86Z"/>
-  <path class="st19" d="M122.23,20.26l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6L122.23,20.26Z" pointer-events="none"/>
-  <path class="st2" d="M25.61,76.06L122.23,20.26l96.62,55.8" pointer-events="none"/>
+  <path class="st20" d="M113.51,58h32.4l45,129.6h-32.4l-28.8-82.94-28.8,82.94h-32.4L113.51,58Z"/>
+  <path class="st19" d="M129.71,18.4l96.62,55.8v111.6l-96.62,55.8-96.62-55.8v-111.6l96.62-55.8Z" pointer-events="none"/>
+  <path class="st2" d="M33.08,74.2l96.62-55.8,96.62,55.8" pointer-events="none"/>
 </svg>
