@@ -621,7 +621,6 @@ class AnovaCulinary extends LitElement {
         color: var(--secondary-text-color, #9e9e9e);
         padding: 16px 0;
         border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
-        border-top: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
       }
 
       .table-row {
