@@ -222,8 +222,8 @@ class AnovaCulinary extends LitElement {
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 </div>
                 <div class="banner-text">
-                  <h3>Unknown Cook Detected</h3>
-                  <p>Your oven is running a multi-stage recipe that isn't in your library.</p>
+                  <h3>Active Cook Detected</h3>
+                  <p>Your oven is currently running a multi-stage cook. Extract and save it to your recipes library?</p>
                 </div>
                 <button class="btn-primary glow" style="margin-left:auto;" @click=${this._importCook}>
                   Import Recipe
