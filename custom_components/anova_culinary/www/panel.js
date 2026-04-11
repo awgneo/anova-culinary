@@ -475,7 +475,6 @@ class AnovaCulinary extends LitElement {
         padding: 8px 16px;
         height: var(--header-height, 56px);
         background-color: var(--app-header-background-color, var(--card-background-color, #1e1e1e));
-        border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
         color: var(--app-header-text-color, var(--primary-text-color));
       }
 
