@@ -381,7 +381,10 @@ def payload_cook_to_cook(raw_payload: dict) -> AnovaPOCook:
         if s.sous_vide:
             s.steam = 100
         else:
-            s.steam = block.get("steamGenerators", {}).get("relativeHumidity", {}).get("setpoint", 0)
+            steam_gens = block.get("steamGenerators", {})
+            s.steam = steam_gens.get("relativeHumidity", {}).get("setpoint", 0)
+            if s.steam == 0:
+                s.steam = steam_gens.get("steamPercentage", {}).get("setpoint", 0)
             
         # Heating Elements
         els = block.get("heatingElements", {})
