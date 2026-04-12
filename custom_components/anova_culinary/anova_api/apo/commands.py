@@ -51,7 +51,7 @@ def build_set_lamp_preference_command(device: AnovaDevice, preference: str) -> D
         "payload": {
             "id": device.id,
             "type": "CMD_APO_SET_LAMP_PREFERENCE",
-            "payload": {
+            "doorLamp": {
                 "preferences": preference
             }
         }
