@@ -168,9 +168,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_cook)
         websocket_api.async_register_command(hass, ws_ovens)
         
+        import homeassistant.helpers.config_validation as cv
+
         async def handle_play_recipe(call):
-            """Play a recipe on a specific device."""
-            device_id = call.data["device_id"]
+            """Play a recipe on a specific device or multiple devices."""
+            device_ids = call.data["device_id"]
             recipe_id = call.data["recipe_id"]
             
             recipe_data = hass.data[DOMAIN]["recipes"].data.get(recipe_id)
@@ -180,10 +182,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 
             from .anova_api.apo.models import AnovaPORecipe
             from .anova_api.apo.transpiler import recipe_to_cook
-            
-            recipe = AnovaPORecipe.from_dict(recipe_data)
-            cook = recipe_to_cook(recipe)
-            cook.cook_id = recipe.id
             
             client = None
             for entry_data in hass.data.get(DOMAIN, {}).values():
@@ -195,14 +193,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.error("Anova client not found")
                 return
                 
-            await client.play_cook(device_id, cook)
+            recipe = AnovaPORecipe.from_dict(recipe_data)
+            
+            for target_dev_id in device_ids:
+                cook = recipe_to_cook(recipe)
+                cook.cook_id = recipe.id
+                await client.play_cook(target_dev_id, cook)
                 
         import voluptuous as vol
         hass.services.async_register(
             DOMAIN, "play_recipe", handle_play_recipe,
             schema=vol.Schema({
-                vol.Required("device_id"): str,
-                vol.Required("recipe_id"): str
+                vol.Required("device_id"): vol.All(cv.ensure_list, [cv.string]),
+                vol.Required("recipe_id"): cv.string
             })
         )
 
@@ -233,9 +236,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.warning("Could not register custom panel: %s", e)
 
     hass.data[DOMAIN][entry.entry_id]["recipes"] = hass.data[DOMAIN]["recipes"]
-
-
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

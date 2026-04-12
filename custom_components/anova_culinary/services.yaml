@@ -24,28 +24,6 @@ delete_recipe:
       required: true
       selector:
         text:
-export_telemetry:
-  name: Export Telemetry
-  description: Request a telemetry export URL
-  fields:
-    device_id:
-      name: Device ID
-      description: Target device ID
-      required: true
-      selector:
-        text:
-    start_date:
-      name: Start Date
-      description: Start Date (YYYY-MM-DD)
-      required: true
-      selector:
-        text:
-    end_date:
-      name: End Date
-      description: End Date (YYYY-MM-DD)
-      required: true
-      selector:
-        text:
 play_recipe:
   name: Play Recipe
   description: Play a saved recipe on a specific oven.

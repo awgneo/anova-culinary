@@ -57,7 +57,7 @@ class AnovaCulinary extends LitElement {
         type: `${this.panel.config.domain}/ovens`
       });
       this.ovens = ovens || [];
-      if (this.ovens.length > 0) this.selectedOvens = this.ovens.map(o => o.id);
+      this.selectedOvens = [];
     } catch (e) {
       console.error("Failed fetching WS collection data", e);
     }
@@ -300,7 +300,7 @@ class AnovaCulinary extends LitElement {
     } else if (this.ovens.length > 1) {
       // Show modal to pick oven
       this.recipeToPlay = recipe;
-      this.selectedOvens = this.ovens.map(o => o.id);
+      this.selectedOvens = [];
       this.showPlayModal = true;
     } else {
       alert("No Anova Precision Ovens found on your network.");
@@ -318,16 +318,14 @@ class AnovaCulinary extends LitElement {
   async _playRecipe() {
     if (!this.recipeToPlay || this.selectedOvens.length === 0) return;
     try {
-      for (const target_id of this.selectedOvens) {
-        await this.hass.callService(
-          this.panel.config.domain,
-          "play_recipe",
-          {
-            device_id: target_id,
-            recipe_id: this.recipeToPlay.id
-          }
-        );
-      }
+      await this.hass.callService(
+        this.panel.config.domain,
+        "play_recipe",
+        {
+          device_id: this.selectedOvens,
+          recipe_id: this.recipeToPlay.id
+        }
+      );
     } catch (e) {
       console.error("Failed to start recipe", e);
       alert("Failed to start recipe on ovens.");
