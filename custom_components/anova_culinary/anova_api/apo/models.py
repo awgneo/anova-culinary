@@ -173,6 +173,7 @@ class AnovaPONodes:
     # Logic & State
     timer_initial: int = 0
     timer_remaining: int = 0
+    timer_current: int = 0
     timer_mode: str = "idle"
     door_closed: bool = True
     door_lamp_on: bool = False

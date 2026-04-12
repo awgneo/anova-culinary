@@ -294,6 +294,7 @@ def payload_to_state(raw_payload: dict) -> AnovaPOState:
         timer = n.get("timer", {})
         nodes.timer_initial = timer.get("initial", 0)
         nodes.timer_remaining = timer.get("remaining", 0)
+        nodes.timer_current = timer.get("current", 0)
         nodes.timer_mode = timer.get("mode", "idle")
         
         display_board = n.get("displayBoard", {})

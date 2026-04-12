@@ -26,7 +26,10 @@ async def async_setup_entry(
     entities = []
     for device_id, device in client.devices.items():
         if device.product == AnovaProduct.APO:
-            entities.append(AnovaSousVideSwitch(client, device))
+            entities.extend([
+                AnovaSousVideSwitch(client, device),
+                AnovaDoorLampSwitch(client, device)
+            ])
             
     async_add_entities(entities)
 
@@ -94,3 +97,63 @@ class AnovaSousVideSwitch(SwitchEntity):
         if cook and cook.current_stage:
             cook.current_stage.sous_vide = False
             await self._client.play_cook(self._device.id, cook)
+
+
+class AnovaDoorLampSwitch(SwitchEntity):
+    """Door Lamp mode switch for Anova Precision Oven."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Door Lamp"
+    _attr_icon = "mdi:lightbulb"
+
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
+        """Initialize."""
+        self._client = client
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door_lamp"
+        
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=device.name,
+            manufacturer=MANUFACTURER,
+            model=device.model,
+        )
+        self._attr_is_on = False
+        self._remove_cb = None
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks."""
+        self._remove_cb = self._client.register_callback(self._handle_update)
+        self._handle_update(self._device.id)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up."""
+        if self._remove_cb:
+            self._remove_cb()
+
+    @callback
+    def _handle_update(self, device_id: str) -> None:
+        """Handle updated data from the websocket."""
+        if device_id != self._device.id:
+            return
+            
+        state = self._client.get_apo_state(self._device.id)
+        if not state:
+            return
+            
+        # Reflected state matches physical light (door_lamp_on).
+        # We also check door_lamp_preferences internally via payload.
+        self._attr_is_on = state.nodes.door_lamp_on
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn the door lamp on."""
+        from .anova_api.apo.commands import build_set_lamp_preference_command
+        cmd = build_set_lamp_preference_command(self._device, "on")
+        await self._client.send_command(cmd)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn the door lamp off."""
+        from .anova_api.apo.commands import build_set_lamp_preference_command
+        cmd = build_set_lamp_preference_command(self._device, "off")
+        await self._client.send_command(cmd)

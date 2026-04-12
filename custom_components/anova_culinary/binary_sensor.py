@@ -24,7 +24,6 @@ async def async_setup_entry(
         if device.product == AnovaProduct.APO:
             entities.extend([
                 AnovaDoorSensor(client, device),
-                AnovaDoorLampSensor(client, device),
                 AnovaCavityLampSensor(client, device),
                 AnovaCameraEmptySensor(client, device),
             ])
@@ -77,18 +76,6 @@ class AnovaDoorSensor(AnovaBinarySensor):
     def _update_from_state(self, state) -> None:
         # For Home Assistant Door class: False = Closed, True = Open
         self._attr_is_on = not state.nodes.door_closed
-
-
-class AnovaDoorLampSensor(AnovaBinarySensor):
-    _attr_name = "Door Lamp"
-    _attr_device_class = BinarySensorDeviceClass.LIGHT
-
-    def __init__(self, client: AnovaClient, device: AnovaDevice):
-        super().__init__(client, device)
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door_lamp"
-
-    def _update_from_state(self, state) -> None:
-        self._attr_is_on = state.nodes.door_lamp_on
 
 
 class AnovaCavityLampSensor(AnovaBinarySensor):
