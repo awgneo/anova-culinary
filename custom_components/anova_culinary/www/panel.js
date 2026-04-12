@@ -466,7 +466,7 @@ class AnovaCulinary extends LitElement {
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
                   <button class="mwc-button outline" @click=${this._cancelPlay}>Cancel</button>
-                  <button class="mwc-button primary" @click=${this._playRecipe} ?disabled=${this.selectedOvens.length === 0}>Play</button>
+                  ${this.selectedOvens.length > 0 ? html`<button class="mwc-button primary" @click=${this._playRecipe}>Play</button>` : ''}
                 </div>
               </div>
             </div>
