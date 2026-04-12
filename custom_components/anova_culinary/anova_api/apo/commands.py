@@ -43,17 +43,16 @@ def build_stop_command(device: AnovaDevice) -> Dict[str, Any]:
         }
     }
 
-def build_set_lamp_preference_command(device: AnovaDevice, preference: str) -> Dict[str, Any]:
-    """Build the dictionary payload to toggle the oven door lamp preference."""
-    pref_bool = preference == "on"
+def build_set_lamp_command(device: AnovaDevice, is_on: bool) -> Dict[str, Any]:
+    """Build the dictionary payload to toggle the oven door lamp."""
     return {
-        "command": "CMD_APO_SET_LAMP_PREFERENCE",
+        "command": "CMD_APO_SET_LAMP",
         "requestId": str(uuid.uuid4()),
         "payload": {
             "id": device.id,
-            "type": "CMD_APO_SET_LAMP_PREFERENCE",
-            "doorLamp": {
-                "preferences": pref_bool
+            "type": "CMD_APO_SET_LAMP",
+            "payload": {
+                "on": is_on
             }
         }
     }

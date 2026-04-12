@@ -70,6 +70,8 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
             s_dict = {
                 "id": stage.id,
                 "title": "",
+                "description": "",
+                "rackPosition": 3,
                 "do": {
                     "type": "cook",
                     "fan": {"speed": speed_int},
@@ -95,11 +97,6 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
                     trigger_cond = {"and": {"userAction": {"=": True}}}
                 elif stage.advance.trigger == AnovaPOTimerTrigger.FOOD_DETECTED:
                     trigger_cond = {"or": {"userAction": {"=": True}, "nodes.cavityCamera.isEmpty": {"=": False}}}
-                
-                # If 'Immediately', the user intends to skip preheat and lock entirely. 
-                # Pop the primary entry lock for the stage so it bypasses preheat gating.
-                if stage.advance.trigger == AnovaPOTimerTrigger.IMMEDIATELY and "entry" in s_dict:
-                    s_dict.pop("entry")
                 
                 s_dict["do"]["timer"] = {
                     "initial": stage.advance.duration
@@ -173,8 +170,7 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
             "originSource": "android",
             "cookableType": "manual",
             "cookableId": "",
-            "title": cook.recipe.title,
-            "rackPosition": 3
+            "title": cook.recipe.title
         })
         
     return inner_payload

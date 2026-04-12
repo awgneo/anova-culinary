@@ -98,13 +98,11 @@ class AnovaSousVideSwitch(SwitchEntity):
             cook.current_stage.sous_vide = False
             await self._client.play_cook(self._device.id, cook)
 
-
 class AnovaDoorLampSwitch(SwitchEntity):
-    """Door Lamp mode switch for Anova Precision Oven."""
+    """Door Lamp switch for Anova Precision Oven."""
 
     _attr_has_entity_name = True
     _attr_name = "Door Lamp"
-    _attr_icon = "mdi:lightbulb"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""
@@ -141,19 +139,18 @@ class AnovaDoorLampSwitch(SwitchEntity):
         if not state:
             return
             
-        # Reflected state matches physical light (door_lamp_on).
-        # We also check door_lamp_preferences internally via payload.
         self._attr_is_on = state.nodes.door_lamp_on
+        self._attr_icon = "mdi:lightbulb-on" if self._attr_is_on else "mdi:lightbulb-off"
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the door lamp on."""
-        from .anova_api.apo.commands import build_set_lamp_preference_command
-        cmd = build_set_lamp_preference_command(self._device, "on")
+        from .anova_api.apo.commands import build_set_lamp_command
+        cmd = build_set_lamp_command(self._device, True)
         await self._client.send_command(cmd)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the door lamp off."""
-        from .anova_api.apo.commands import build_set_lamp_preference_command
-        cmd = build_set_lamp_preference_command(self._device, "off")
+        from .anova_api.apo.commands import build_set_lamp_command
+        cmd = build_set_lamp_command(self._device, False)
         await self._client.send_command(cmd)
