@@ -21,7 +21,7 @@ class AnovaCulinary extends LitElement {
       recipeToDelete: { type: Object },
       showPlayModal: { type: Boolean },
       recipeToPlay: { type: Object },
-      selectedOven: { type: String }
+      selectedOvens: { type: Array }
     };
   }
 
@@ -37,7 +37,7 @@ class AnovaCulinary extends LitElement {
     this.recipeToDelete = null;
     this.showPlayModal = false;
     this.recipeToPlay = null;
-    this.selectedOven = "";
+    this.selectedOvens = [];
   }
 
   async firstUpdated() {
@@ -57,7 +57,7 @@ class AnovaCulinary extends LitElement {
         type: `${this.panel.config.domain}/ovens`
       });
       this.ovens = ovens || [];
-      if (this.ovens.length > 0) this.selectedOven = this.ovens[0].id;
+      if (this.ovens.length > 0) this.selectedOvens = this.ovens.map(o => o.id);
     } catch (e) {
       console.error("Failed fetching WS collection data", e);
     }
@@ -294,32 +294,43 @@ class AnovaCulinary extends LitElement {
   async _promptPlay(recipe) {
     if (this.ovens.length === 1) {
       // Just play immediately if there's only 1 oven
-      this.selectedOven = this.ovens[0].id;
+      this.selectedOvens = [this.ovens[0].id];
       this.recipeToPlay = recipe;
       await this._playRecipe();
     } else if (this.ovens.length > 1) {
       // Show modal to pick oven
       this.recipeToPlay = recipe;
+      this.selectedOvens = this.ovens.map(o => o.id);
       this.showPlayModal = true;
     } else {
       alert("No Anova Precision Ovens found on your network.");
     }
   }
 
+  _toggleOvenSelection(id) {
+    if (this.selectedOvens.includes(id)) {
+      this.selectedOvens = this.selectedOvens.filter(o => o !== id);
+    } else {
+      this.selectedOvens = [...this.selectedOvens, id];
+    }
+  }
+
   async _playRecipe() {
-    if (!this.recipeToPlay || !this.selectedOven) return;
+    if (!this.recipeToPlay || this.selectedOvens.length === 0) return;
     try {
-      await this.hass.callService(
-        this.panel.config.domain,
-        "play_recipe",
-        {
-          device_id: this.selectedOven,
-          recipe_id: this.recipeToPlay.id
-        }
-      );
+      for (const target_id of this.selectedOvens) {
+        await this.hass.callService(
+          this.panel.config.domain,
+          "play_recipe",
+          {
+            device_id: target_id,
+            recipe_id: this.recipeToPlay.id
+          }
+        );
+      }
     } catch (e) {
       console.error("Failed to start recipe", e);
-      alert("Failed to start recipe on oven.");
+      alert("Failed to start recipe on ovens.");
     }
     this.showPlayModal = false;
     this.recipeToPlay = null;
@@ -342,8 +353,8 @@ class AnovaCulinary extends LitElement {
         <div class="toolbar">
           <div class="toolbar-title" style="display: flex; align-items: center;">
             ${this.isKiosk ? html`
-              <button class="icon-btn" @click=${() => window.history.back()} style="margin-right: 16px; width: 36px; height: 36px; background: rgba(255,255,255,0.05);" title="Go Back">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              <button class="icon-btn" @click=${() => window.history.back()} style="margin-right: 16px; width: 44px; height: 44px; background: rgba(255, 255, 255, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;" title="Back">
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width: 24px; height: 24px;"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/></svg>
               </button>
             ` : ''}
           </div>
@@ -438,21 +449,26 @@ class AnovaCulinary extends LitElement {
           <div class="modal-overlay">
             <div class="ha-card form-card pop-in" style="margin: 0; max-width: 400px; width: 100%;">
               <div class="card-header" style="border-bottom: 1px solid var(--divider-color); padding-bottom: 16px;">
-                <h3>Start Recipe</h3>
+                <h3>Play Recipe</h3>
               </div>
               <div class="card-content">
                 <p>Which oven would you like to run <strong>${this.recipeToPlay ? this.recipeToPlay.name : "this recipe"}</strong> on?</p>
                 
                 <div class="form-group" style="margin-top: 16px;">
-                  <label>TARGET DEVICE</label>
-                  <select .value=${this.selectedOven} @change=${e => this.selectedOven = e.target.value}>
-                    ${this.ovens.map(o => html`<option value="${o.id}">${o.name}</option>`)}
-                  </select>
+                  <label>TARGET DEVICES</label>
+                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                    ${this.ovens.map(o => html`
+                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; color: var(--primary-text-color); cursor: pointer;">
+                        <input type="checkbox" style="width: auto; margin: 0;" .checked=${this.selectedOvens.includes(o.id)} @change=${() => this._toggleOvenSelection(o.id)} />
+                        ${o.name}
+                      </label>
+                    `)}
+                  </div>
                 </div>
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
                   <button class="mwc-button outline" @click=${this._cancelPlay}>Cancel</button>
-                  <button class="mwc-button primary" @click=${this._playRecipe}>Start Oven</button>
+                  <button class="mwc-button primary" @click=${this._playRecipe} ?disabled=${this.selectedOvens.length === 0}>Play</button>
                 </div>
               </div>
             </div>
