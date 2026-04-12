@@ -184,6 +184,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             from .anova_api.apo.transpiler import recipe_to_cook
             
             recipe = AnovaPORecipe.from_dict(recipe_data)
+            recipe.id = recipe_id
             
             for target_dev_id in device_ids:
                 client = None
