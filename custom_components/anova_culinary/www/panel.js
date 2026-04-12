@@ -15,6 +15,13 @@ class AnovaCulinary extends LitElement {
       searchQuery: { type: String },
       editingRecipe: { type: Object },
       activeCook: { type: Object },
+      ovens: { type: Array },
+      isKiosk: { type: Boolean },
+      showDeleteModal: { type: Boolean },
+      recipeToDelete: { type: Object },
+      showPlayModal: { type: Boolean },
+      recipeToPlay: { type: Object },
+      selectedOven: { type: String }
     };
   }
 
@@ -24,6 +31,13 @@ class AnovaCulinary extends LitElement {
     this.searchQuery = "";
     this.editingRecipe = null;
     this.activeCook = null;
+    this.ovens = [];
+    this.isKiosk = window.location.search.includes("kiosk=true");
+    this.showDeleteModal = false;
+    this.recipeToDelete = null;
+    this.showPlayModal = false;
+    this.recipeToPlay = null;
+    this.selectedOven = "";
   }
 
   async firstUpdated() {
@@ -38,8 +52,14 @@ class AnovaCulinary extends LitElement {
         type: `${this.panel.config.domain}/recipes/list`
       });
       this.recipes = data;
+      
+      const ovens = await this.hass.connection.sendMessagePromise({
+        type: `${this.panel.config.domain}/ovens`
+      });
+      this.ovens = ovens || [];
+      if (this.ovens.length > 0) this.selectedOven = this.ovens[0].id;
     } catch (e) {
-      console.error("Failed fetching WS collection", e);
+      console.error("Failed fetching WS collection data", e);
     }
   }
 
@@ -246,16 +266,68 @@ class AnovaCulinary extends LitElement {
     this._fetchRecipes();
   }
 
-  async _deleteRecipe(id, name) {
+  _promptDelete(recipe) {
+    this.recipeToDelete = recipe;
+    this.showDeleteModal = true;
+  }
+
+  async _confirmDelete() {
+    if (!this.recipeToDelete) return;
     try {
       await this.hass.connection.sendMessagePromise({
         type: `${this.panel.config.domain}/recipes/delete`,
-        recipe_id: id
+        recipe_id: this.recipeToDelete.id
       });
     } catch (e) {
       console.error("Failed executing HA WS call", e);
     }
+    this.showDeleteModal = false;
+    this.recipeToDelete = null;
     this._fetchRecipes();
+  }
+
+  _cancelDelete() {
+    this.showDeleteModal = false;
+    this.recipeToDelete = null;
+  }
+
+  async _promptPlay(recipe) {
+    if (this.ovens.length === 1) {
+      // Just play immediately if there's only 1 oven
+      this.selectedOven = this.ovens[0].id;
+      this.recipeToPlay = recipe;
+      await this._playRecipe();
+    } else if (this.ovens.length > 1) {
+      // Show modal to pick oven
+      this.recipeToPlay = recipe;
+      this.showPlayModal = true;
+    } else {
+      alert("No Anova Precision Ovens found on your network.");
+    }
+  }
+
+  async _playRecipe() {
+    if (!this.recipeToPlay || !this.selectedOven) return;
+    try {
+      await this.hass.callService(
+        this.panel.config.domain,
+        "play_recipe",
+        {
+          device_id: this.selectedOven,
+          recipe_id: this.recipeToPlay.id
+        }
+      );
+    } catch (e) {
+      console.error("Failed to start recipe", e);
+      alert("Failed to start recipe on oven.");
+    }
+    this.showPlayModal = false;
+    this.recipeToPlay = null;
+  }
+
+  _cancelPlay() {
+    this.showPlayModal = false;
+    this.recipeToPlay = null;
   }
 
   render() {
@@ -268,6 +340,13 @@ class AnovaCulinary extends LitElement {
     return html`
       <div class="page">
         <div class="toolbar">
+          <div class="toolbar-title" style="display: flex; align-items: center;">
+            ${this.isKiosk ? html`
+              <button class="icon-btn" @click=${() => window.history.back()} style="margin-right: 16px; width: 36px; height: 36px; background: rgba(255,255,255,0.05);" title="Go Back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+            ` : ''}
+          </div>
           <div class="search-bar">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <input type="text" placeholder="Search recipes..." @input=${this._handleSearch} .value=${this.searchQuery} />
@@ -319,13 +398,16 @@ class AnovaCulinary extends LitElement {
                 <div class="col" style="flex:1; color:var(--secondary-text-color);">${r.stages ? r.stages.length : 0} defined</div>
                 <div class="col" style="width:160px; text-align:right; padding-right:16px;">
                   <div class="row-actions">
+                    <button class="icon-btn" @click=${() => this._promptPlay(r)} title="Play">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </button>
                     <button class="icon-btn" @click=${() => this._startEdit(r)} title="Edit">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                     <button class="icon-btn" @click=${() => this._exportRecipe(r)} title="Export JSON">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
-                    <button class="icon-btn danger" @click=${() => this._deleteRecipe(r.id, r.name)} title="Delete">
+                    <button class="icon-btn danger" @click=${() => this._promptDelete(r)} title="Delete">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                     </button>
                   </div>
@@ -334,6 +416,49 @@ class AnovaCulinary extends LitElement {
             `)}
           </div>
         </div>
+
+        ${this.showDeleteModal ? html`
+          <div class="modal-overlay">
+            <div class="ha-card form-card pop-in" style="margin: 0; max-width: 400px; width: 100%;">
+              <div class="card-header" style="border-bottom: 1px solid var(--divider-color); padding-bottom: 16px;">
+                <h3>Confirm Delete</h3>
+              </div>
+              <div class="card-content">
+                <p>Are you sure you want to delete <strong>${this.recipeToDelete ? this.recipeToDelete.name : "this recipe"}</strong>? This action cannot be undone.</p>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
+                  <button class="mwc-button outline" @click=${this._cancelDelete}>Cancel</button>
+                  <button class="mwc-button primary" style="background: var(--error-color, #f44336);" @click=${this._confirmDelete}>Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${this.showPlayModal ? html`
+          <div class="modal-overlay">
+            <div class="ha-card form-card pop-in" style="margin: 0; max-width: 400px; width: 100%;">
+              <div class="card-header" style="border-bottom: 1px solid var(--divider-color); padding-bottom: 16px;">
+                <h3>Start Recipe</h3>
+              </div>
+              <div class="card-content">
+                <p>Which oven would you like to run <strong>${this.recipeToPlay ? this.recipeToPlay.name : "this recipe"}</strong> on?</p>
+                
+                <div class="form-group" style="margin-top: 16px;">
+                  <label>TARGET DEVICE</label>
+                  <select .value=${this.selectedOven} @change=${e => this.selectedOven = e.target.value}>
+                    ${this.ovens.map(o => html`<option value="${o.id}">${o.name}</option>`)}
+                  </select>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
+                  <button class="mwc-button outline" @click=${this._cancelPlay}>Cancel</button>
+                  <button class="mwc-button primary" @click=${this._playRecipe}>Start Oven</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
       </div>
     `;
   }
@@ -496,6 +621,17 @@ class AnovaCulinary extends LitElement {
         flex-direction: column;
         min-height: 100%;
         background-color: var(--primary-background-color);
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
       }
 
       /* Toolbar mimicking HA app-header / Data Table toolbar */

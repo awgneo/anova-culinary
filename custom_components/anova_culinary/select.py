@@ -30,7 +30,6 @@ async def async_setup_entry(
     for device_id, device in client.devices.items():
         if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaRecipeSelect(client, device, recipes),
                 AnovaHeatingElementSelect(client, device),
                 AnovaFanSpeedSelect(client, device),
                 AnovaTimerTriggerSelect(client, device),
@@ -39,98 +38,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AnovaRecipeSelect(SelectEntity):
-    """Dropdown for selecting a multi-stage recipe."""
 
-    _attr_has_entity_name = True
-    _attr_name = "Recipe"
-    _attr_icon = "mdi:chef-hat"
-
-    def __init__(self, client: AnovaClient, device: AnovaDevice, collection) -> None:
-        self._client = client
-        self.collection = collection
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_recipe_select"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=MANUFACTURER,
-            model=self._device.model,
-        )
-        
-        self._attr_current_option = "None"
-        self._remove_cb = None
-        self._unsub_collection = None
-
-    async def async_added_to_hass(self) -> None:
-        self._remove_cb = self._client.register_callback(self._handle_update)
-        
-        async def _async_collection_changed(changeset) -> None:
-            self.async_write_ha_state()
-            self._handle_update(self._device.id)
-            
-        self._unsub_collection = self.collection.async_add_change_set_listener(_async_collection_changed)
-        self._handle_update(self._device.id)
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._remove_cb:
-            self._remove_cb()
-        if self._unsub_collection:
-            self._unsub_collection()
-
-    @property
-    def options(self) -> list[str]:
-        """Return dynamically loaded recipe options."""
-        return ["None", "Manual / App Cook"] + [r.get("name", "Unnamed") for r in self.collection.async_items()]
-
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        """Update options if the global recipe list changes."""
-        if device_id != self._device.id: return
-        state = self._client.get_apo_state(device_id)
-        if not state: return
-        
-        if not state.is_running or not state.cook:
-            if self._attr_current_option != "None":
-                self._attr_current_option = "None"
-                self.async_write_ha_state()
-            return
-            
-        incoming_cook_id = state.cook.cook_id
-        
-        # Native O(1) dictionary lookups bounded by strict UUID keys!
-        matched_recipe = self.collection.data.get(incoming_cook_id)
-        matched_name = matched_recipe.get("name", "Unnamed") if matched_recipe else "Manual / App Cook"
-                
-        if self._attr_current_option != matched_name:
-            self._attr_current_option = matched_name
-            self.async_write_ha_state()
-
-    async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
-        if option == "None":
-            await self._client.stop_cook(self._device.id)
-            return
-            
-        if option == "Manual / App Cook":
-            # Can't directly start these
-            return
-
-        recipe_data = next((r for r in self.collection.async_items() if r.get("name") == option), None)
-        if not recipe_data: return
-        
-        from .anova_api.apo.models import AnovaPORecipe
-        
-        # Hydrate types perfectly using Mashumaro dict mixin
-        recipe = AnovaPORecipe.from_dict(recipe_data)
-        
-        from .anova_api.apo.transpiler import recipe_to_cook
-        cook = recipe_to_cook(recipe)
-        
-        # Override the dynamically generated random ID with our explicit stored recipe ID
-        cook.cook_id = recipe.id
-        
-        await self._client.play_cook(self._device.id, cook)
 
 
 class AnovaHeatingElementSelect(SelectEntity):

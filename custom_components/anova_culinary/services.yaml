@@ -46,3 +46,19 @@ export_telemetry:
       required: true
       selector:
         text:
+play_recipe:
+  name: Play Recipe
+  description: Play a saved recipe on a specific oven.
+  fields:
+    device_id:
+      name: Device ID
+      description: The ID of the target oven.
+      required: true
+      selector:
+        text:
+    recipe_id:
+      name: Recipe ID
+      description: The UUID of the recipe to play.
+      required: true
+      selector:
+        text:

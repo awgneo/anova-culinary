@@ -41,6 +41,29 @@ class APORecipeCollection(DictStorageCollection):
 
     async def _update_data(self, item: dict, update_data: dict) -> dict:
         return {**item, **update_data}
+
+@websocket_api.websocket_command(
+    {
+        "type": f"{DOMAIN}/ovens",
+    }
+)
+@callback
+def ws_ovens(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
+) -> None:
+    """Return a list of APO devices."""
+    ovens = []
+    for entry_data in hass.data.get(DOMAIN, {}).values():
+        if not isinstance(entry_data, dict): continue
+        client = entry_data.get("client")
+        if not client: continue
+        
+        for dev in client.devices.values():
+            if dev.product == AnovaProduct.APO:
+                ovens.append({"id": dev.id, "name": dev.name})
+    
+    connection.send_result(msg["id"], ovens)
+    
     
 @websocket_api.websocket_command(
     {
@@ -143,6 +166,64 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ws.async_setup(hass)
         
         websocket_api.async_register_command(hass, ws_cook)
+        websocket_api.async_register_command(hass, ws_ovens)
+        
+        async def handle_play_recipe(call):
+            """Play a recipe on a specific device."""
+            device_id = call.data["device_id"]
+            recipe_id = call.data["recipe_id"]
+            
+            recipe_data = hass.data[DOMAIN]["recipes"].data.get(recipe_id)
+            if not recipe_data:
+                _LOGGER.error("Recipe %s not found", recipe_id)
+                return
+                
+            from .anova_api.apo.transpiler import cook_to_payload
+            from .anova_api.apo.models import AnovaPORecipe, AnovaPOStage
+            from mashumaro.exceptions import MissingField
+            import uuid
+            
+            stages = []
+            for s in recipe_data.get("stages", []):
+                try:
+                    stages.append(AnovaPOStage.from_dict(s))
+                except MissingField:
+                    continue
+                    
+            r = AnovaPORecipe(id=recipe_id, title=recipe_data.get("name", "Custom Recipe"), stages=stages)
+            payload = cook_to_payload(r)
+            
+            # Find client holding this device
+            target_client = None
+            for entry_data in hass.data.get(DOMAIN, {}).values():
+                if not isinstance(entry_data, dict): continue
+                c = entry_data.get("client")
+                if c and device_id in c.devices:
+                    target_client = c
+                    break
+                    
+            if target_client:
+                cmd = {
+                    "command": "CMD_APO_START",
+                    "requestId": str(uuid.uuid4()),
+                    "payload": {
+                        "id": device_id,
+                        "type": "CMD_APO_START",
+                        "payload": payload
+                    }
+                }
+                await target_client.send_command(cmd)
+            else:
+                _LOGGER.error("Device %s not found for recipe execution", device_id)
+                
+        import voluptuous as vol
+        hass.services.async_register(
+            DOMAIN, "play_recipe", handle_play_recipe,
+            schema=vol.Schema({
+                vol.Required("device_id"): str,
+                vol.Required("recipe_id"): str
+            })
+        )
 
         # We will serve the panel assets from the www directory
         try:
