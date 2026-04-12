@@ -400,7 +400,6 @@ class AnovaCulinary extends LitElement {
                   ? html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>` 
                   : html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`}
               </div>
-              <div class="col" style="flex:1;">Stages</div>
               <div class="col" style="width:160px; text-align:right; padding-right:16px;"></div>
             </div>
             
@@ -410,7 +409,7 @@ class AnovaCulinary extends LitElement {
                 <div class="col" style="flex:2; padding-left:16px; font-weight:500; display:flex; align-items:center;">
                   ${r.name}
                 </div>
-                <div class="col" style="flex:1; color:var(--secondary-text-color);">${r.stages ? r.stages.length : 0} defined</div>
+
                 <div class="col" style="width:160px; text-align:right; padding-right:16px;">
                   <div class="row-actions">
                     <button class="icon-btn" @click=${() => this._promptPlay(r)} title="Play">
