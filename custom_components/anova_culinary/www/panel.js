@@ -344,7 +344,9 @@ class AnovaCulinary extends LitElement {
       return this.renderEditor();
     }
 
-    const filtered = this.recipes.filter(r => r.name.toLowerCase().includes(this.searchQuery));
+    const filtered = this.recipes
+      .filter(r => r.name.toLowerCase().includes(this.searchQuery))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return html`
       <div class="page">
