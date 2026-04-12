@@ -183,25 +183,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             from .anova_api.apo.models import AnovaPORecipe
             from .anova_api.apo.transpiler import recipe_to_cook
             
-            client = None
-            for entry_data in hass.data.get(DOMAIN, {}).values():
-                if isinstance(entry_data, dict) and "client" in entry_data:
-                    client = entry_data["client"]
-                    break
-                    
-            if not client:
-                _LOGGER.error("Anova client not found")
-                return
-                
             recipe = AnovaPORecipe.from_dict(recipe_data)
             
-            import asyncio
             for target_dev_id in device_ids:
+                client = None
+                for entry_data in hass.data.get(DOMAIN, {}).values():
+                    if isinstance(entry_data, dict) and "client" in entry_data:
+                        c = entry_data["client"]
+                        if c and target_dev_id in c.devices:
+                            client = c
+                            break
+                            
+                if not client:
+                    _LOGGER.error("Anova client not found for device %s", target_dev_id)
+                    continue
+                    
                 cook = recipe_to_cook(recipe)
                 cook.cook_id = recipe.id
                 await client.play_cook(target_dev_id, cook)
-                await asyncio.sleep(1.0)
-                
+
         import voluptuous as vol
         hass.services.async_register(
             DOMAIN, "play_recipe", handle_play_recipe,
