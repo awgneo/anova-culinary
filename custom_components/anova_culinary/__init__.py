@@ -199,7 +199,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     continue
                     
                 cook = recipe_to_cook(recipe)
-                cook.cook_id = recipe.id
                 await client.play_cook(target_dev_id, cook)
 
         import voluptuous as vol
