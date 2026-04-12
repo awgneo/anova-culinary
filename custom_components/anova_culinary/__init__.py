@@ -195,10 +195,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 
             recipe = AnovaPORecipe.from_dict(recipe_data)
             
+            import asyncio
             for target_dev_id in device_ids:
                 cook = recipe_to_cook(recipe)
                 cook.cook_id = recipe.id
                 await client.play_cook(target_dev_id, cook)
+                await asyncio.sleep(1.0)
                 
         import voluptuous as vol
         hass.services.async_register(
