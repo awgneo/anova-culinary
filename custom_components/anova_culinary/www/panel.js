@@ -407,10 +407,7 @@ class AnovaCulinary extends LitElement {
             ${filtered.length === 0 ? html`<div class="empty-state">No recipes found.</div>` : ''}
             ${filtered.map(r => html`
               <div class="table-row slide-in">
-                <div class="col" style="flex:2; padding-left:16px; font-weight:500; display:flex; align-items:center; gap:16px;">
-                  <div class="type-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 16v-4M12 8h.01"/></svg>
-                  </div>
+                <div class="col" style="flex:2; padding-left:16px; font-weight:500; display:flex; align-items:center;">
                   ${r.name}
                 </div>
                 <div class="col" style="flex:1; color:var(--secondary-text-color);">${r.stages ? r.stages.length : 0} defined</div>
