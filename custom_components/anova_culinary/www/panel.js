@@ -213,6 +213,17 @@ class AnovaCulinary extends LitElement {
     this.requestUpdate();
   }
 
+  _moveStage(index, direction) {
+    if (!this.editingRecipe) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= this.editingRecipe.stages.length) return;
+    const stages = this.editingRecipe.stages;
+    const temp = stages[index];
+    stages[index] = stages[newIndex];
+    stages[newIndex] = temp;
+    this.requestUpdate();
+  }
+
   async _saveRecipe() {
     if (!this.editingRecipe) return;
 
@@ -264,11 +275,11 @@ class AnovaCulinary extends LitElement {
           <div class="action-group">
             <button class="mwc-button" @click=${this._triggerFileImport}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Import Recipe
+              Import
             </button>
             <button class="mwc-button primary" @click=${this._startCreate}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              New Recipe
+              New
             </button>
           </div>
         </div>
@@ -339,7 +350,7 @@ class AnovaCulinary extends LitElement {
            </div>
            <div class="action-group">
              <button class="mwc-button" @click=${() => { this.editingRecipe = null; }}>Cancel</button>
-             <button class="mwc-button primary" @click=${this._saveRecipe}>Save Recipe</button>
+             <button class="mwc-button primary" @click=${this._saveRecipe}>Save</button>
            </div>
         </div>
 
@@ -362,9 +373,17 @@ class AnovaCulinary extends LitElement {
             <div class="ha-card form-card pop-in">
                 <div class="card-header">
                     <div class="stage-badge">Stage ${i + 1}</div>
-                    <button class="icon-btn danger" @click=${() => this._removeStage(i)} title="Remove Stage">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                    </button>
+                    <div style="display:flex; gap:8px;">
+                      <button class="icon-btn" @click=${() => this._moveStage(i, -1)} ?disabled=${i === 0} title="Move Up">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+                      </button>
+                      <button class="icon-btn" @click=${() => this._moveStage(i, 1)} ?disabled=${i === this.editingRecipe.stages.length - 1} title="Move Down">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                      </button>
+                      <button class="icon-btn danger" @click=${() => this._removeStage(i)} title="Remove Stage">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
                 </div>
                 
                 <div class="card-content stage-grid-inner">
@@ -502,7 +521,6 @@ class AnovaCulinary extends LitElement {
       .search-bar {
         position: relative;
         flex: 1;
-        max-width: 400px;
         display: flex;
         align-items: center;
       }
