@@ -466,5 +466,7 @@ def payload_cook_to_cook(raw_payload: dict) -> AnovaPOCook:
         recipe=recipe,
         cook_id=cook_id,
         active_stage_index=idx,
-        active_stage_id=active_stage_id
+        active_stage_id=active_stage_id,
+        active_stage_started_timestamp=cook_dict.get("activeStageStartedTimestamp", ""),
+        cook_started_timestamp=cook_dict.get("startedTimestamp", "")
     )

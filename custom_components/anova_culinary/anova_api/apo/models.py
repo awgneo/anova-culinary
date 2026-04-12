@@ -68,6 +68,8 @@ class AnovaPOCook:
     cook_id: str = ""
     active_stage_index: int = 0
     active_stage_id: str = ""
+    active_stage_started_timestamp: str = ""
+    cook_started_timestamp: str = ""
 
     @property
     def current_stage(self) -> Optional[AnovaPOStage]:

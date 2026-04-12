@@ -161,11 +161,19 @@ class AnovaTimerElapsedSensor(SensorEntity):
             return
             
         state = self._client.get_apo_state(self._device.id) or self._client.get_apc_state(self._device.id)
-        if state:
+        if state and state.cook and state.cook.cook_started_timestamp:
             try:
-                timer = state.nodes.timer_current
-                if timer is not None:
-                    self._attr_native_value = int(timer)
-                    self.async_write_ha_state()
+                from datetime import datetime, timezone
+                # Parse Anova's ISO 8601 string: 2026-04-12T05:16:14Z
+                started = datetime.strptime(state.cook.cook_started_timestamp, "%Y-%m-%dT%H:%M:%SZ")
+                started = started.replace(tzinfo=timezone.utc)
+                now = datetime.now(timezone.utc)
+                
+                elapsed = max(0, (now - started).total_seconds())
+                self._attr_native_value = int(elapsed)
+                self.async_write_ha_state()
             except Exception:
                 pass
+        elif not state or not state.is_running:
+            self._attr_native_value = 0
+            self.async_write_ha_state()

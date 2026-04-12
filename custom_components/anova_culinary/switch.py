@@ -118,6 +118,8 @@ class AnovaDoorLampSwitch(SwitchEntity):
         )
         self._attr_is_on = False
         self._remove_cb = None
+        self._expected_state = None
+        self._expected_state_time = 0.0
 
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
@@ -139,18 +141,43 @@ class AnovaDoorLampSwitch(SwitchEntity):
         if not state:
             return
             
-        self._attr_is_on = state.nodes.door_lamp_on
+        # Debounce to prevent UI ghosting: ignore contradicting telemetry for 3 seconds after a command
+        import time
+        if self._expected_state is not None and (time.time() - self._expected_state_time) < 3.0:
+            if state.nodes.door_lamp_on != self._expected_state:
+                # The hardware state hasn't caught up yet, maintain our optimistic expected state
+                self._attr_is_on = self._expected_state
+            else:
+                # Hardware caught up early, clear the expectation
+                self._expected_state = None
+                self._attr_is_on = state.nodes.door_lamp_on
+        else:
+            self._expected_state = None
+            self._attr_is_on = state.nodes.door_lamp_on
+            
         self._attr_icon = "mdi:lightbulb-on" if self._attr_is_on else "mdi:lightbulb-off"
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the door lamp on."""
+        import time
+        self._expected_state = True
+        self._expected_state_time = time.time()
+        self._attr_is_on = True
+        self.async_write_ha_state()
+        
         from .anova_api.apo.commands import build_set_lamp_command
         cmd = build_set_lamp_command(self._device, True)
         await self._client.send_command(cmd)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the door lamp off."""
+        import time
+        self._expected_state = False
+        self._expected_state_time = time.time()
+        self._attr_is_on = False
+        self.async_write_ha_state()
+        
         from .anova_api.apo.commands import build_set_lamp_command
         cmd = build_set_lamp_command(self._device, False)
         await self._client.send_command(cmd)
