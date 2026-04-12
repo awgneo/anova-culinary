@@ -28,7 +28,7 @@ class AnovaCulinary extends LitElement {
 
   async firstUpdated() {
     await this._fetchRecipes();
-    await this._fetchActiveCook();
+    await this._subscribeCook();
   }
 
   async _fetchRecipes() {
@@ -70,21 +70,27 @@ class AnovaCulinary extends LitElement {
     return cloned;
   }
 
-  async _fetchActiveCook() {
+  async _subscribeCook() {
     if (!this.hass) return;
     try {
-      const active = await this.hass.connection.sendMessagePromise({
-        type: `${this.panel.config.domain}/cook`
-      });
-      if (active) {
-        // Only show if it doesn't match an existing local recipe ID
-        const isKnown = this.recipes.some(r => r.id === active.id);
-        if (!isKnown) {
-          this.activeCook = active;
-        }
-      }
+      this._unsubCook = await this.hass.connection.subscribeMessage(
+        (active) => {
+          if (active) {
+            // Only show if it doesn't match an existing local recipe ID
+            const isKnown = this.recipes.some(r => r.id === active.id);
+            if (!isKnown) {
+              this.activeCook = active;
+            } else {
+              this.activeCook = null;
+            }
+          } else {
+            this.activeCook = null;
+          }
+        },
+        { type: `${this.panel.config.domain}/cook` }
+      );
     } catch (e) {
-      console.error("Failed fetching active cook from websocket", e);
+      console.error("Failed subscribing to active cook websocket", e);
     }
   }
 

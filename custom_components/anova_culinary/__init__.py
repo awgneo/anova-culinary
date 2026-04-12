@@ -41,26 +41,58 @@ class APORecipeCollection(DictStorageCollection):
 
     async def _update_data(self, item: dict, update_data: dict) -> dict:
         return {**item, **update_data}
-
-
-@websocket_api.websocket_command({"type": f"{DOMAIN}/cook"})
-@callback
-def ws_cook(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
-    """Return the active recipe running on an Anova Precision Oven."""
-    active_recipe = None
-    for entry_data in hass.data.get(DOMAIN, {}).values():
-        client = entry_data.get("client")
-        if not client: continue
-        
-        for device_id, device in client.devices.items():
-            if device.product == AnovaProduct.APO:
-                state = client.get_apo_state(device_id)
-                if state and state.is_running and state.cook and state.cook.recipe:
-                    active_recipe = state.cook.recipe.to_dict()
-                    break
-        if active_recipe: break
     
-    connection.send_result(msg["id"], active_recipe)
+@websocket_api.websocket_command(
+    {
+        "type": f"{DOMAIN}/cook",
+    }
+)
+@websocket_api.async_response
+async def ws_cook(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
+) -> None:
+    """Subscribe to active cook changes in real-time."""
+    
+    @callback
+    def forward_cook_state(device_id: str) -> None:
+        """Forward state to frontend via websocket."""
+        active_recipe = None
+        for entry_data in hass.data.get(DOMAIN, {}).values():
+            if not isinstance(entry_data, dict): continue
+            client = entry_data.get("client")
+            if not client: continue
+            
+            for d_id, device in client.devices.items():
+                if device.product == AnovaProduct.APO:
+                    state = client.get_apo_state(d_id)
+                    if state and state.is_running and state.cook and state.cook.recipe:
+                        active_recipe = state.cook.recipe.to_dict()
+                        break
+            if active_recipe: break
+            
+        connection.send_message(
+            websocket_api.event_message(msg["id"], active_recipe)
+        )
+
+    # Attach listener to first available client since Anova accounts span across devices globally.
+    first_client = None
+    for entry_data in hass.data.get(DOMAIN, {}).values():
+        if not isinstance(entry_data, dict): continue
+        if client := entry_data.get("client"):
+            first_client = client
+            break
+            
+    if not first_client:
+        connection.send_error(msg["id"], "not_found", "No Anova client available")
+        return
+        
+    remove_cb = first_client.register_callback(forward_cook_state)
+    
+    connection.subscriptions[msg["id"]] = remove_cb
+    connection.send_result(msg["id"])
+    
+    # Send initial state explicitly so the UI has immediate data
+    forward_cook_state("DISCOVERY")
 
 
 
