@@ -178,43 +178,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.error("Recipe %s not found", recipe_id)
                 return
                 
-            from .anova_api.apo.transpiler import cook_to_payload
-            from .anova_api.apo.models import AnovaPORecipe, AnovaPOStage
-            from mashumaro.exceptions import MissingField
-            import uuid
+            from .anova_api.apo.models import AnovaPORecipe
+            from .anova_api.apo.transpiler import recipe_to_cook
             
-            stages = []
-            for s in recipe_data.get("stages", []):
-                try:
-                    stages.append(AnovaPOStage.from_dict(s))
-                except MissingField:
-                    continue
-                    
-            r = AnovaPORecipe(id=recipe_id, title=recipe_data.get("name", "Custom Recipe"), stages=stages)
-            payload = cook_to_payload(r)
+            recipe = AnovaPORecipe.from_dict(recipe_data)
+            cook = recipe_to_cook(recipe)
+            cook.cook_id = recipe.id
             
-            # Find client holding this device
-            target_client = None
+            client = None
             for entry_data in hass.data.get(DOMAIN, {}).values():
-                if not isinstance(entry_data, dict): continue
-                c = entry_data.get("client")
-                if c and device_id in c.devices:
-                    target_client = c
+                if isinstance(entry_data, dict) and "client" in entry_data:
+                    client = entry_data["client"]
                     break
                     
-            if target_client:
-                cmd = {
-                    "command": "CMD_APO_START",
-                    "requestId": str(uuid.uuid4()),
-                    "payload": {
-                        "id": device_id,
-                        "type": "CMD_APO_START",
-                        "payload": payload
-                    }
-                }
-                await target_client.send_command(cmd)
-            else:
-                _LOGGER.error("Device %s not found for recipe execution", device_id)
+            if not client:
+                _LOGGER.error("Anova client not found")
+                return
+                
+            await client.play_cook(device_id, cook)
                 
         import voluptuous as vol
         hass.services.async_register(

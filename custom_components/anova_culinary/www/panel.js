@@ -977,4 +977,7 @@ class AnovaCulinary extends LitElement {
     `;
   }
 }
-customElements.define("anova-culinary", AnovaCulinary);
+
+if (!customElements.get("anova-culinary")) {
+  customElements.define("anova-culinary", AnovaCulinary);
+}
