@@ -21,7 +21,8 @@ class AnovaCulinary extends LitElement {
       recipeToDelete: { type: Object },
       showPlayModal: { type: Boolean },
       recipeToPlay: { type: Object },
-      selectedOvens: { type: Array }
+      selectedOvens: { type: Array },
+      recipeSortDirection: { type: Number }
     };
   }
 
@@ -38,6 +39,7 @@ class AnovaCulinary extends LitElement {
     this.showPlayModal = false;
     this.recipeToPlay = null;
     this.selectedOvens = [];
+    this.recipeSortDirection = 1;
   }
 
   async firstUpdated() {
@@ -346,7 +348,7 @@ class AnovaCulinary extends LitElement {
 
     const filtered = this.recipes
       .filter(r => r.name.toLowerCase().includes(this.searchQuery))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => this.recipeSortDirection * a.name.localeCompare(b.name));
 
     return html`
       <div class="page">
@@ -392,7 +394,12 @@ class AnovaCulinary extends LitElement {
 
           <div class="data-table">
             <div class="table-header">
-              <div class="col" style="flex:2; padding-left:16px;">Recipe</div>
+              <div class="col" style="flex:2; padding-left:16px; cursor:pointer; display:flex; align-items:center; gap:4px; user-select:none;" @click=${() => { this.recipeSortDirection *= -1; this.requestUpdate(); }}>
+                Recipe
+                ${this.recipeSortDirection === 1 
+                  ? html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>` 
+                  : html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`}
+              </div>
               <div class="col" style="flex:1;">Stages</div>
               <div class="col" style="width:160px; text-align:right; padding-right:16px;"></div>
             </div>
