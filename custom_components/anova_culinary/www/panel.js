@@ -96,8 +96,8 @@ class AnovaCulinary extends LitElement {
       this._unsubCook = await this.hass.connection.subscribeMessage(
         (active) => {
           if (active) {
-            // Only show if it doesn't match an existing local recipe ID
-            const isKnown = this.recipes.some(r => r.id === active.id);
+            // Only show if it doesn't match an existing local recipe ID or Name precisely
+            const isKnown = this.recipes.some(r => r.id === active.id || r.name === active.name);
             if (!isKnown) {
               this.activeCook = active;
             } else {
