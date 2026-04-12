@@ -56,7 +56,7 @@ class AnovaCulinary extends LitElement {
       const ovens = await this.hass.connection.sendMessagePromise({
         type: `${this.panel.config.domain}/ovens`
       });
-      this.ovens = ovens || [];
+      this.ovens = (ovens || []).sort((a, b) => a.name.localeCompare(b.name));
       this.selectedOvens = [];
     } catch (e) {
       console.error("Failed fetching WS collection data", e);
