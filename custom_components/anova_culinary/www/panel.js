@@ -435,10 +435,10 @@ class AnovaCulinary extends LitElement {
           <div class="modal-overlay">
             <div class="ha-card form-card pop-in" style="margin: 0; max-width: 400px; width: 100%;">
               <div class="card-header" style="border-bottom: 1px solid var(--divider-color); padding-bottom: 16px;">
-                <h3>Confirm Delete</h3>
+                <h3>Delete ${this.recipeToDelete ? this.recipeToDelete.name : "this recipe"}?</h3>
               </div>
               <div class="card-content">
-                <p>Are you sure you want to delete <strong>${this.recipeToDelete ? this.recipeToDelete.name : "this recipe"}</strong>? This action cannot be undone.</p>
+                <p>This action cannot be undone.</p>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
                   <button class="mwc-button outline" @click=${this._cancelDelete}>Cancel</button>
                   <button class="mwc-button primary" style="background: var(--error-color, #f44336);" @click=${this._confirmDelete}>Delete</button>
@@ -452,21 +452,23 @@ class AnovaCulinary extends LitElement {
           <div class="modal-overlay">
             <div class="ha-card form-card pop-in" style="margin: 0; max-width: 400px; width: 100%;">
               <div class="card-header" style="border-bottom: 1px solid var(--divider-color); padding-bottom: 16px;">
-                <h3>Play Recipe</h3>
+                <h3>Play ${this.recipeToPlay ? this.recipeToPlay.name : "this recipe"}?</h3>
               </div>
               <div class="card-content">
-                <p>Which oven would you like to run <strong>${this.recipeToPlay ? this.recipeToPlay.name : "this recipe"}</strong> on?</p>
                 
-                <div class="form-group" style="margin-top: 16px;">
-                  <label>TARGET DEVICES</label>
-                  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                    ${this.ovens.map(o => html`
-                      <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; color: var(--primary-text-color); cursor: pointer;">
-                        <input type="checkbox" style="width: auto; margin: 0;" .checked=${this.selectedOvens.includes(o.id)} @change=${() => this._toggleOvenSelection(o.id)} />
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${this.ovens.map(o => html`
+                    <div 
+                      @click=${() => this._toggleOvenSelection(o.id)} 
+                      style="display: flex; align-items: center; gap: 12px; padding: 16px; min-height: 56px; background-color: ${this.selectedOvens.includes(o.id) ? 'rgba(3, 169, 244, 0.1)' : 'var(--card-background-color, rgba(255, 255, 255, 0.05))'}; border: 1px solid ${this.selectedOvens.includes(o.id) ? 'var(--primary-color, #03a9f4)' : 'var(--divider-color, rgba(255, 255, 255, 0.12))'}; border-radius: 8px; cursor: pointer; transition: all 0.2s; user-select: none;">
+                      <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${this.selectedOvens.includes(o.id) ? 'var(--primary-color, #03a9f4)' : 'var(--secondary-text-color, #9e9e9e)'}; background-color: ${this.selectedOvens.includes(o.id) ? 'var(--primary-color, #03a9f4)' : 'transparent'}; box-sizing: border-box;">
+                        ${this.selectedOvens.includes(o.id) ? html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-primary-color, #ffffff)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>` : ''}
+                      </div>
+                      <div style="font-size: 16px; font-weight: 500; color: ${this.selectedOvens.includes(o.id) ? 'var(--primary-color, #03a9f4)' : 'var(--primary-text-color)'};">
                         ${o.name}
-                      </label>
-                    `)}
-                  </div>
+                      </div>
+                    </div>
+                  `)}
                 </div>
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px;">
