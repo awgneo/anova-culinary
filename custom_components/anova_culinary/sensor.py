@@ -27,6 +27,7 @@ async def async_setup_entry(
                 AnovaProbeSensor(client, device),
                 AnovaTimerSensor(client, device),
                 AnovaTimerElapsedSensor(client, device),
+                AnovaRecipeSensor(client, device),
             ])
         elif device.product == AnovaProduct.APC:
             entities.extend([
@@ -125,6 +126,46 @@ class AnovaTimerSensor(SensorEntity):
             except Exception:
                 pass
 
+class AnovaRecipeSensor(SensorEntity):
+    """Active recipe sensor for APO."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Recipe"
+    _attr_icon = "mdi:text-box-outline"
+
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
+        self._client = client
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_recipe"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=self._device.name,
+            manufacturer=MANUFACTURER,
+            model=self._device.model,
+        )
+        self._remove_cb = None
+        self._attr_native_value = "Manual"
+
+    async def async_added_to_hass(self) -> None:
+        self._remove_cb = self._client.register_callback(self._handle_update)
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._remove_cb:
+            self._remove_cb()
+
+    @callback
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id:
+            return
+        state = self._client.get_apo_state(self._device.id)
+        if state:
+            recipe_title = "Manual"
+            if state.is_running and state.cook and state.cook.recipe and state.cook.recipe.title:
+                recipe_title = state.cook.recipe.title
+                
+            if self._attr_native_value != recipe_title:
+                self._attr_native_value = recipe_title
+                self.async_write_ha_state()
 
 class AnovaTimerElapsedSensor(SensorEntity):
     """Timer elapsed sensor."""
