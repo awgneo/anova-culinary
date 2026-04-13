@@ -334,6 +334,7 @@ class AnovaCulinary extends LitElement {
     }
     this.showPlayModal = false;
     this.recipeToPlay = null;
+    if (this.isKiosk) window.history.back();
   }
 
   _cancelPlay() {
@@ -412,8 +413,8 @@ class AnovaCulinary extends LitElement {
 
                 <div class="col" style="width:160px; text-align:right; padding-right:16px;">
                   <div class="row-actions">
-                    <button class="icon-btn" @click=${() => this._promptPlay(r)} title="Play">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <button class="icon-btn play" @click=${() => this._promptPlay(r)} title="Play">
+                      <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="8 5 19 12 8 19 8 5"/></svg>
                     </button>
                     <button class="icon-btn" @click=${() => this._startEdit(r)} title="Edit">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -782,6 +783,16 @@ class AnovaCulinary extends LitElement {
       .icon-btn.danger:hover {
         background: rgba(244, 67, 54, 0.1);
         color: var(--error-color, #f44336);
+      }
+
+      .icon-btn.play {
+        color: var(--primary-color, #03a9f4);
+        background: rgba(3, 169, 244, 0.1);
+      }
+
+      .icon-btn.play:hover {
+        background: rgba(3, 169, 244, 0.2);
+        color: var(--primary-color, #03a9f4);
       }
 
       .row-actions {
