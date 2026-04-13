@@ -229,7 +229,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 frontend_url_path=domain_hyphen,
                 webcomponent_name=domain_hyphen,
                 sidebar_title="Anova",
-                sidebar_icon="mdi:stove",
+                sidebar_icon="mdi:toaster-oven",
                 module_url=f"/{domain_hyphen}-assets/panel.js?v={cache_buster}",
                 embed_iframe=False,
                 require_admin=False,
