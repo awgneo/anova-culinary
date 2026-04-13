@@ -222,7 +222,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             cache_buster = str(int(os.path.getmtime(panel_path))) if os.path.exists(panel_path) else "1"
             
             await hass.http.async_register_static_paths([
-                StaticPathConfig(f"/{domain_hyphen}", www_dir, False)
+                StaticPathConfig(f"/{domain_hyphen}-assets", www_dir, False)
             ])
             await async_register_panel(
                 hass,
@@ -230,7 +230,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 webcomponent_name=domain_hyphen,
                 sidebar_title="Anova",
                 sidebar_icon="mdi:stove",
-                module_url=f"/{domain_hyphen}/panel.js?v={cache_buster}",
+                module_url=f"/{domain_hyphen}-assets/panel.js?v={cache_buster}",
                 embed_iframe=False,
                 require_admin=False,
                 config={"domain": DOMAIN}
