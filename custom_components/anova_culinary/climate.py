@@ -104,7 +104,10 @@ class AnovaOven(ClimateEntity):
             
             if curr_stage:
                 self._active_mode = "wet" if curr_stage.sous_vide else "dry"
-                self._attr_target_temperature = curr_stage.temperature
+                
+                # Prevent the API from wiping out the target temperature when the oven is idle!
+                if curr_stage.temperature >= self.min_temp:
+                    self._attr_target_temperature = curr_stage.temperature
                 
                 if self._active_mode == "wet":
                     self._attr_current_temperature = state.nodes.current_wet_temp
