@@ -6,6 +6,7 @@ from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
+    HVACAction,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature, ATTR_TEMPERATURE
@@ -62,6 +63,7 @@ class AnovaOven(ClimateEntity):
         self._attr_current_temperature = 0.0
         self._attr_target_temperature = 176.67
         self._attr_hvac_mode = HVACMode.OFF
+        self._attr_hvac_action = HVACAction.IDLE
         self._active_mode = "dry"
         self._remove_cb = None
 
@@ -119,8 +121,10 @@ class AnovaOven(ClimateEntity):
             
         if state.is_running:
             self._attr_hvac_mode = HVACMode.HEAT
+            self._attr_hvac_action = HVACAction.HEATING
         else:
             self._attr_hvac_mode = HVACMode.OFF
+            self._attr_hvac_action = HVACAction.IDLE
 
         self.async_write_ha_state()
 
@@ -164,7 +168,16 @@ class AnovaOven(ClimateEntity):
             # Send payload directly without nesting commands if we want to ensure it plays
             await self._client.play_cook(self._device.id, cook)
             self._attr_hvac_mode = HVACMode.HEAT
+            self._attr_hvac_action = HVACAction.HEATING
             self.async_write_ha_state()
+
+    async def async_turn_on(self) -> None:
+        """Turn the entity on."""
+        await self.async_set_hvac_mode(HVACMode.HEAT)
+
+    async def async_turn_off(self) -> None:
+        """Turn the entity off."""
+        await self.async_set_hvac_mode(HVACMode.OFF)
 
 
 class AnovaProbe(ClimateEntity):
