@@ -54,7 +54,7 @@ class AnovaCulinary extends LitElement {
         type: `${this.panel.config.domain}/recipes/list`
       });
       this.recipes = data;
-      
+
       const ovens = await this.hass.connection.sendMessagePromise({
         type: `${this.panel.config.domain}/ovens`
       });
@@ -397,9 +397,9 @@ class AnovaCulinary extends LitElement {
             <div class="table-header">
               <div class="col" style="flex:2; padding-left:16px; cursor:pointer; display:flex; align-items:center; gap:4px; user-select:none;" @click=${() => { this.recipeSortDirection *= -1; this.requestUpdate(); }}>
                 Recipe
-                ${this.recipeSortDirection === 1 
-                  ? html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>` 
-                  : html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`}
+                ${this.recipeSortDirection === 1
+        ? html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>`
+        : html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`}
               </div>
               <div class="col" style="width:160px; text-align:right; padding-right:16px;"></div>
             </div>
@@ -663,7 +663,7 @@ class AnovaCulinary extends LitElement {
         justify-content: space-between;
         box-sizing: border-box;
         padding: 0 16px;
-        height: var(--header-height, 56px);
+        height: max(var(--header-height), 56px);
         background-color: var(--app-header-background-color, var(--card-background-color, #1e1e1e));
         border-bottom: 1px solid var(--divider-color, rgba(255, 255, 255, 0.12));
         color: var(--app-header-text-color, var(--primary-text-color));
