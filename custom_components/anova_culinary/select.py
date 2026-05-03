@@ -166,7 +166,7 @@ class AnovaTimerStartsSelect(SelectEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Timer Starts"
-    _attr_icon = "mdi:play-circle-outline"
+    _attr_icon = "mdi:timer-cog-outline"
     _attr_options = ["Immediately", "When Preheated", "Food Detected", "Manually"]
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:

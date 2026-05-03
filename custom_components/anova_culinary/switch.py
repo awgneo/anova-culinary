@@ -190,7 +190,7 @@ class AnovaSteamSwitch(SwitchEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Steam Switch"
-    _attr_icon = "mdi:water"
+    _attr_icon = "mdi:water-sync"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""

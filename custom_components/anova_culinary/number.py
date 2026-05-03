@@ -37,7 +37,7 @@ class AnovaSteam(NumberEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Steam"
-    _attr_icon = "mdi:water"
+    _attr_icon = "mdi:water-percent"
     _attr_native_min_value = 0
     _attr_native_max_value = 100
     _attr_native_step = 1
