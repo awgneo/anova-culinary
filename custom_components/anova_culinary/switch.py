@@ -39,7 +39,7 @@ class AnovaSousVideSwitch(SwitchEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Sous Vide"
-    _attr_icon = "mdi:water-boiler"
+    _attr_icon = "mdi:water-circle"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""

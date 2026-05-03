@@ -68,6 +68,7 @@ class AnovaBinarySensor(BinarySensorEntity):
 class AnovaDoorSensor(AnovaBinarySensor):
     _attr_name = "Door Status"
     _attr_device_class = BinarySensorDeviceClass.DOOR
+    _attr_icon = "mdi:door"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):
         super().__init__(client, device)
@@ -81,6 +82,7 @@ class AnovaDoorSensor(AnovaBinarySensor):
 class AnovaCavityLampSensor(AnovaBinarySensor):
     _attr_name = "Cavity Light"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
+    _attr_icon = "mdi:lightbulb"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):
         super().__init__(client, device)
@@ -93,6 +95,7 @@ class AnovaCavityLampSensor(AnovaBinarySensor):
 class AnovaCameraEmptySensor(AnovaBinarySensor):
     _attr_name = "Camera Status"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
+    _attr_icon = "mdi:cctv"
     
     def __init__(self, client: AnovaClient, device: AnovaDevice):
         super().__init__(client, device)

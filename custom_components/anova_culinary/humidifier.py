@@ -36,6 +36,7 @@ class AnovaSteamHumidifier(HumidifierEntity):
 
     _attr_has_entity_name = True
     _attr_name = "Steam"
+    _attr_icon = "mdi:water"
     _attr_device_class = HumidifierDeviceClass.HUMIDIFIER
     _attr_supported_features = HumidifierEntityFeature.MODES
 
