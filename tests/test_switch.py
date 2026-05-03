@@ -45,3 +45,25 @@ async def test_switch_states_and_commands(hass, init_integration):
         
         assert called_device == "APO-456"
         assert called_cook.current_stage.sous_vide is True
+        
+    # Validate the steam toggle correctly issues 100
+    with patch(
+        "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
+    ) as mock_play:
+        await hass.services.async_call(
+            "switch", "turn_on", {"entity_id": "switch.test_oven_steam_toggle"}, blocking=True
+        )
+        mock_play.assert_called_once()
+        called_cook = mock_play.call_args[0][1]
+        assert called_cook.current_stage.steam == 100
+
+    # Validate the steam toggle correctly issues 0
+    with patch(
+        "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
+    ) as mock_play:
+        await hass.services.async_call(
+            "switch", "turn_off", {"entity_id": "switch.test_oven_steam_toggle"}, blocking=True
+        )
+        mock_play.assert_called_once()
+        called_cook = mock_play.call_args[0][1]
+        assert called_cook.current_stage.steam == 0

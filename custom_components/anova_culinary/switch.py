@@ -28,7 +28,8 @@ async def async_setup_entry(
         if device.product == AnovaProduct.APO:
             entities.extend([
                 AnovaSousVideSwitch(client, device),
-                AnovaDoorLightSwitch(client, device)
+                AnovaDoorLightSwitch(client, device),
+                AnovaSteamSwitch(client, device)
             ])
             
     async_add_entities(entities)
@@ -183,3 +184,61 @@ class AnovaDoorLightSwitch(SwitchEntity):
         from .anova_api.apo.commands import build_set_lamp_command
         cmd = build_set_lamp_command(self._device, False)
         await self._client.send_command(cmd)
+
+class AnovaSteamSwitch(SwitchEntity):
+    """Steam toggle switch for Anova Precision Oven."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Steam Toggle"
+    _attr_icon = "mdi:water"
+
+    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
+        """Initialize."""
+        self._client = client
+        self._device = device
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_steam_toggle"
+        
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device.id)},
+            name=device.name,
+            manufacturer=MANUFACTURER,
+            model=device.model,
+        )
+        self._attr_is_on = False
+        self._remove_cb = None
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks."""
+        self._remove_cb = self._client.register_callback(self._handle_update)
+        self._handle_update(self._device.id)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Clean up."""
+        if self._remove_cb:
+            self._remove_cb()
+
+    @callback
+    def _handle_update(self, device_id: str) -> None:
+        if device_id != self._device.id: return
+        state = self._client.get_apo_state(self._device.id)
+        if not state or not state.cook: return
+        
+        self._attr_available = state.is_running
+        try:
+            curr_stage = state.cook.current_stage
+            if curr_stage:
+                self._attr_is_on = curr_stage.steam > 0
+        except: pass
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        cook = self._client.get_current_cook(self._device.id)
+        if cook and cook.current_stage:
+            cook.current_stage.steam = 100
+            await self._client.play_cook(self._device.id, cook)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        cook = self._client.get_current_cook(self._device.id)
+        if cook and cook.current_stage:
+            cook.current_stage.steam = 0
+            await self._client.play_cook(self._device.id, cook)
