@@ -83,11 +83,10 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
                 "entry": {"conditions": {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}}
             }
             
-            if stage.steam > 0:
-                s_dict["do"]["steamGenerators"] = {
-                    "mode": "relative-humidity",
-                    "relativeHumidity": {"setpoint": stage.steam}
-                }
+            s_dict["do"]["steamGenerators"] = {
+                "mode": "relative-humidity",
+                "relativeHumidity": {"setpoint": stage.steam}
+            }
                 
             if isinstance(stage.advance, AnovaPOTimer):
                 trigger_cond = None
@@ -133,11 +132,10 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
                 "stageTransitionType": "automatic",
                 "rackPosition": 3
             }
-            if stage.steam > 0:
-                s_dict["steamGenerators"] = {
-                    "mode": "relative-humidity",
-                    "relativeHumidity": {"setpoint": stage.steam}
-                }
+            s_dict["steamGenerators"] = {
+                "mode": "relative-humidity",
+                "relativeHumidity": {"setpoint": stage.steam}
+            }
             
             if isinstance(stage.advance, AnovaPOTimer):
                 trigger_map = {
