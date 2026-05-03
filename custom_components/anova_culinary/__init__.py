@@ -20,7 +20,6 @@ from .const import DOMAIN, CONF_TOKEN, RECIPE_STORAGE_KEY, RECIPE_STORAGE_VERSIO
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
-    Platform.HUMIDIFIER,
     Platform.WATER_HEATER,
     Platform.CLIMATE,
     Platform.SWITCH,
