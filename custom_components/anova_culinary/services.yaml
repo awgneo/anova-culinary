@@ -40,3 +40,20 @@ play_recipe:
       required: true
       selector:
         text:
+adjust_timer:
+  name: Adjust Timer
+  description: Adjusts the oven timer target by a specific amount of minutes.
+  fields:
+    entity_id:
+      name: Entity ID
+      description: The ID of the oven timer number entity.
+      required: true
+      selector:
+        entity:
+          domain: number
+    amount:
+      name: Amount
+      description: The amount of minutes to add (positive) or subtract (negative).
+      required: true
+      selector:
+        number:

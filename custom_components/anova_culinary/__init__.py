@@ -212,6 +212,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             })
         )
 
+        async def handle_adjust_timer(call):
+            """Adjust the timer by a specific amount of minutes."""
+            entity_id = call.data["entity_id"]
+            amount = call.data["amount"]
+            
+            state = hass.states.get(entity_id)
+            if not state:
+                _LOGGER.error("Entity %s not found", entity_id)
+                return
+                
+            current_val = float(state.state) if state.state not in ("unknown", "unavailable") else 0.0
+            new_val = max(0.0, current_val + amount)
+            
+            await hass.services.async_call(
+                "number", "set_value",
+                {"entity_id": entity_id, "value": new_val},
+                blocking=True
+            )
+
+        hass.services.async_register(
+            DOMAIN, "adjust_timer", handle_adjust_timer,
+            schema=vol.Schema({
+                vol.Required("entity_id"): cv.entity_id,
+                vol.Required("amount"): vol.Coerce(float)
+            })
+        )
+
         # We will serve the panel assets from the www directory
         try:
             domain_hyphen = DOMAIN.replace("_", "-")
