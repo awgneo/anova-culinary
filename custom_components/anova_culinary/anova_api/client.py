@@ -186,6 +186,8 @@ class AnovaClient:
         # Optimistically update the local state
         if device.state:
             device.state.is_running = False
+            if hasattr(device.state, "nodes") and hasattr(device.state.nodes, "door_lamp_on"):
+                device.state.nodes.door_lamp_on = False
             for cb in self._callbacks:
                 cb(device_id)
 
