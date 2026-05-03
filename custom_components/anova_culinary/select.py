@@ -84,8 +84,8 @@ class AnovaHeatingElementSelect(SelectEntity):
                 elif h == AnovaPOHeatingElement.BOTTOM: self._attr_current_option = "Bottom"
                 elif h == AnovaPOHeatingElement.TOP: self._attr_current_option = "Top"
                 else: self._attr_current_option = "Rear"
-                self.async_write_ha_state()
         except: pass
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         cook = self._client.get_current_cook(self._device.id)
@@ -145,8 +145,8 @@ class AnovaFanSpeedSelect(SelectEntity):
                 elif f == AnovaPOFanSpeed.LOW: self._attr_current_option = "Low"
                 elif f == AnovaPOFanSpeed.MEDIUM: self._attr_current_option = "Medium"
                 else: self._attr_current_option = "High"
-                self.async_write_ha_state()
         except: pass
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         cook = self._client.get_current_cook(self._device.id)
@@ -206,8 +206,8 @@ class AnovaTimerTriggerSelect(SelectEntity):
                 elif t == AnovaPOTimerTrigger.PREHEATED: self._attr_current_option = "When Preheated"
                 elif t == AnovaPOTimerTrigger.FOOD_DETECTED: self._attr_current_option = "Food Detected"
                 else: self._attr_current_option = "Manually"
-                self.async_write_ha_state()
         except: pass
+        self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
         cook = self._client.get_current_cook(self._device.id)

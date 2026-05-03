@@ -74,8 +74,8 @@ class AnovaSteamPercentage(NumberEntity):
             if curr_stage:
                 # If dry mode, steam should be effectively 0 in UI? The transpiler handles setting steam in dry to 0 sometimes.
                 self._attr_native_value = curr_stage.steam
-                self.async_write_ha_state()
         except: pass
+        self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         cook = self._client.get_current_cook(self._device.id)
@@ -125,8 +125,8 @@ class AnovaTimerTarget(NumberEntity):
             curr_stage = state.cook.current_stage
             if curr_stage and isinstance(curr_stage.advance, AnovaPOTimer):
                 self._attr_native_value = int(curr_stage.advance.duration / 60.0) # show minutes
-                self.async_write_ha_state()
         except: pass
+        self.async_write_ha_state()
 
     async def async_set_native_value(self, value: float) -> None:
         cook = self._client.get_current_cook(self._device.id)
