@@ -149,7 +149,7 @@ class AnovaClient:
             return
 
         await self.send_command(cmd)
-        
+
         # Optimistically update the local state to provide instant UI feedback
         if device.state:
             device.state.is_running = True
@@ -182,12 +182,10 @@ class AnovaClient:
             return
             
         await self.send_command(cmd)
-        
+
         # Optimistically update the local state to provide instant UI feedback
         if device.state:
             device.state.is_running = False
-            if hasattr(device.state, "nodes") and hasattr(device.state.nodes, "door_lamp_on"):
-                device.state.nodes.door_lamp_on = False
             # Fire callbacks instantly so all dependent entities refresh
             for cb in self._callbacks:
                 cb(device_id)
