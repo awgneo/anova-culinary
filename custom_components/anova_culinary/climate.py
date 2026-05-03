@@ -230,8 +230,7 @@ class AnovaProbe(ClimateEntity):
         if device_id != self._device.id: return
         state = self._client.get_apo_state(self._device.id)
         if not state: return
-
-        self._attr_available = state.nodes.probe_connected
+        self._attr_available = state.nodes.probe_connected and state.is_running
 
         try:
             self._attr_current_temperature = state.nodes.current_probe_temp

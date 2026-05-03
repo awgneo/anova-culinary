@@ -19,6 +19,7 @@ async def test_switch_states_and_commands(hass, init_integration):
         active_stage_index=0
     )
     client.devices["APO-456"].state.cook = cook
+    client.devices["APO-456"].state.is_running = True
     
     # Fire dummy telemetry to trigger UI reflows
     for cb in client._callbacks:

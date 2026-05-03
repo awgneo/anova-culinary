@@ -76,6 +76,8 @@ class AnovaSousVideSwitch(SwitchEntity):
         if not state or not state.cook:
             return
 
+        self._attr_available = state.is_running
+
         try:
             curr_stage = state.cook.current_stage
             if curr_stage:

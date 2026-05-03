@@ -67,6 +67,7 @@ class AnovaSteamPercentage(NumberEntity):
         if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
+        self._attr_available = state.is_running
         
         try:
             curr_stage = state.cook.current_stage
@@ -118,6 +119,7 @@ class AnovaTimerTarget(NumberEntity):
         if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
+        self._attr_available = state.is_running
         
         try:
             curr_stage = state.cook.current_stage

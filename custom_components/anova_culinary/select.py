@@ -37,10 +37,6 @@ async def async_setup_entry(
             
     async_add_entities(entities)
 
-
-
-
-
 class AnovaHeatingElementSelect(SelectEntity):
     """Heating element selector."""
 
@@ -76,6 +72,8 @@ class AnovaHeatingElementSelect(SelectEntity):
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
         
+        self._attr_available = state.is_running
+        
         try:
             curr_stage = state.cook.current_stage
             if curr_stage:
@@ -102,7 +100,6 @@ class AnovaHeatingElementSelect(SelectEntity):
 
         cook.current_stage.heating_elements = h
         await self._client.play_cook(self._device.id, cook)
-
 
 class AnovaFanSpeedSelect(SelectEntity):
     """Fan speed selector."""
@@ -138,6 +135,7 @@ class AnovaFanSpeedSelect(SelectEntity):
         if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
+        self._attr_available = state.is_running
         
         try:
             curr_stage = state.cook.current_stage
@@ -197,6 +195,7 @@ class AnovaTimerTriggerSelect(SelectEntity):
         if device_id != self._device.id: return
         state = self._client.get_apo_state(device_id)
         if not state or not state.cook: return
+        self._attr_available = state.is_running
         
         from .anova_api.apo.models import AnovaPOTimer
         try:
