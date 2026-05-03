@@ -102,7 +102,7 @@ class AnovaRecipeSensor(SensorEntity):
             model=self._device.model,
         )
         self._remove_cb = None
-        self._attr_native_value = "Manual"
+        self._attr_native_value = "None"
 
     async def async_added_to_hass(self) -> None:
         self._remove_cb = self._client.register_callback(self._handle_update)
@@ -117,9 +117,12 @@ class AnovaRecipeSensor(SensorEntity):
             return
         state = self._client.get_apo_state(self._device.id)
         if state:
-            recipe_title = "Manual"
-            if state.is_running and state.cook and state.cook.recipe and state.cook.recipe.title:
-                recipe_title = state.cook.recipe.title
+            if not state.is_running:
+                recipe_title = "None"
+            else:
+                recipe_title = "Manual Cook"
+                if state.cook and state.cook.recipe and state.cook.recipe.title:
+                    recipe_title = state.cook.recipe.title
                 
             if self._attr_native_value != recipe_title:
                 self._attr_native_value = recipe_title
