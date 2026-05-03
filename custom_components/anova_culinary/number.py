@@ -33,7 +33,7 @@ async def async_setup_entry(
 
 
 class AnovaSteam(NumberEntity):
-    """Steam percentage slider for Anova APO."""
+    """Steam slider for Anova APO."""
 
     _attr_has_entity_name = True
     _attr_name = "Steam"
