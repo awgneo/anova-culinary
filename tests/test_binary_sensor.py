@@ -20,13 +20,13 @@ async def test_binary_sensor_states(hass, init_integration):
     await hass.async_block_till_done()
 
     # Assert state parses logic exactly
-    state = hass.states.get("binary_sensor.test_oven_oven_door")
+    state = hass.states.get("binary_sensor.test_oven_door_status")
     assert state.state == STATE_ON
     
-    state = hass.states.get("binary_sensor.test_oven_door_lamp")
+    state = hass.states.get("switch.test_oven_door_light")
     assert state.state == STATE_ON
     
-    state = hass.states.get("binary_sensor.test_oven_cavity_lamp")
+    state = hass.states.get("binary_sensor.test_oven_cavity_light")
     assert state.state == STATE_OFF
     
     state = hass.states.get("binary_sensor.test_oven_camera_status")

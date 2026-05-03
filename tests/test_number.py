@@ -23,7 +23,7 @@ async def test_number_states_and_commands(hass, init_integration):
     await hass.async_block_till_done()
 
     # Validate state is extracted perfectly from stage boundaries
-    state = hass.states.get("number.test_oven_steam_percentage")
+    state = hass.states.get("number.test_oven_steam")
     assert state is not None
     assert state.state == "50"
     
@@ -31,7 +31,7 @@ async def test_number_states_and_commands(hass, init_integration):
     with patch("custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook") as mock_play:
         await hass.services.async_call(
             "number", "set_value", 
-            {"entity_id": "number.test_oven_steam_percentage", "value": "100"}, 
+            {"entity_id": "number.test_oven_steam", "value": "100"}, 
             blocking=True
         )
         

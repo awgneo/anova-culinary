@@ -66,7 +66,7 @@ class AnovaBinarySensor(BinarySensorEntity):
 
 
 class AnovaDoorSensor(AnovaBinarySensor):
-    _attr_name = "Oven Door"
+    _attr_name = "Door Status"
     _attr_device_class = BinarySensorDeviceClass.DOOR
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):
@@ -79,7 +79,7 @@ class AnovaDoorSensor(AnovaBinarySensor):
 
 
 class AnovaCavityLampSensor(AnovaBinarySensor):
-    _attr_name = "Cavity Lamp"
+    _attr_name = "Cavity Light"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):

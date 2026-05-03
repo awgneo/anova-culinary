@@ -12,7 +12,6 @@ from .anova_api.client import AnovaClient
 from .anova_api.device import AnovaDevice
 from .anova_api.product import AnovaProduct
 
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -24,7 +23,6 @@ async def async_setup_entry(
     for device_id, device in client.devices.items():
         if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaProbeSensor(client, device),
                 AnovaTimerSensor(client, device),
                 AnovaTimerElapsedSensor(client, device),
                 AnovaRecipeSensor(client, device),
@@ -36,51 +34,6 @@ async def async_setup_entry(
             ])
             
     async_add_entities(entities)
-
-
-class AnovaProbeSensor(SensorEntity):
-    """Probe temperature sensor for APO."""
-
-    _attr_has_entity_name = True
-    _attr_name = "Probe Temperature"
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-
-    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
-        self._client = client
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_probe"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=MANUFACTURER,
-            model=self._device.model,
-        )
-        self._remove_cb = None
-
-    async def async_added_to_hass(self) -> None:
-        self._remove_cb = self._client.register_callback(self._handle_update)
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._remove_cb:
-            self._remove_cb()
-
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        if device_id != self._device.id:
-            return
-        state = self._client.get_apo_state(self._device.id)
-        if state:
-            self._attr_available = state.nodes.probe_connected
-            try:
-                probe_temp = state.nodes.current_probe_temp
-                if probe_temp is not None:
-                    self._attr_native_value = float(probe_temp)
-                    self.async_write_ha_state()
-            except Exception:
-                pass
-
 
 class AnovaTimerSensor(SensorEntity):
     """Timer remaining sensor."""
@@ -119,7 +72,12 @@ class AnovaTimerSensor(SensorEntity):
         state = self._client.get_apo_state(self._device.id) or self._client.get_apc_state(self._device.id)
         if state:
             try:
-                timer = state.nodes.timer_remaining
+                timer = None
+                if hasattr(state, "nodes"):
+                    timer = state.nodes.timer_remaining
+                elif hasattr(state, "timer"):
+                    timer = state.timer.remaining
+                
                 if timer is not None:
                     self._attr_native_value = int(timer)
                     self.async_write_ha_state()
@@ -202,7 +160,8 @@ class AnovaTimerElapsedSensor(SensorEntity):
             return
             
         state = self._client.get_apo_state(self._device.id) or self._client.get_apc_state(self._device.id)
-        if state and state.cook and state.cook.cook_started_timestamp:
+        cook = getattr(state, "cook", None)
+        if state and cook and cook.cook_started_timestamp:
             try:
                 from datetime import datetime, timezone
                 # Parse Anova's ISO 8601 string: 2026-04-12T05:16:14Z

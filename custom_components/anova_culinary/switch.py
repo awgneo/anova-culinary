@@ -38,7 +38,7 @@ class AnovaSousVideSwitch(SwitchEntity):
     """Sous Vide mode switch for Anova Precision Oven."""
 
     _attr_has_entity_name = True
-    _attr_name = "Sous Vide Mode"
+    _attr_name = "Sous Vide"
     _attr_icon = "mdi:water-boiler"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
@@ -102,7 +102,7 @@ class AnovaDoorLampSwitch(SwitchEntity):
     """Door Lamp switch for Anova Precision Oven."""
 
     _attr_has_entity_name = True
-    _attr_name = "Door Lamp"
+    _attr_name = "Door Light"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""

@@ -187,7 +187,7 @@ class AnovaProbe(ClimateEntity):
     """Representation of an Anova Physical Probe target."""
 
     _attr_has_entity_name = True
-    _attr_name = "Target Probe"
+    _attr_name = "Probe"
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     _attr_hvac_modes = [HVACMode.HEAT]
     _attr_temperature_unit = UnitOfTemperature.CELSIUS

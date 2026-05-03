@@ -36,7 +36,7 @@ class AnovaSteamPercentage(NumberEntity):
     """Steam percentage slider for Anova APO."""
 
     _attr_has_entity_name = True
-    _attr_name = "Steam Percentage"
+    _attr_name = "Steam"
     _attr_icon = "mdi:weather-partly-rainy"
     _attr_native_min_value = 0
     _attr_native_max_value = 100

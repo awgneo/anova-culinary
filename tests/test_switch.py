@@ -26,7 +26,7 @@ async def test_switch_states_and_commands(hass, init_integration):
     await hass.async_block_till_done()
 
     # Validate state initializes perfectly to mock bounds
-    state = hass.states.get("switch.test_oven_sous_vide_mode")
+    state = hass.states.get("switch.test_oven_sous_vide")
     assert state is not None
     assert state.state == STATE_OFF
     
@@ -35,7 +35,7 @@ async def test_switch_states_and_commands(hass, init_integration):
         "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
     ) as mock_play:
         await hass.services.async_call(
-            "switch", "turn_on", {"entity_id": "switch.test_oven_sous_vide_mode"}, blocking=True
+            "switch", "turn_on", {"entity_id": "switch.test_oven_sous_vide"}, blocking=True
         )
         
         mock_play.assert_called_once()

@@ -11,22 +11,13 @@ async def test_sensor_states(hass, init_integration):
     
     # Send APO telemetry
     apo_state = client.devices["APO-456"].state
-    apo_state.raw_state = {
-        "payload": {
-            "probe": {"current": {"celsius": "54.0"}},
-            "timer": {"remaining": "600"}
-        }
-    }
+    apo_state.nodes.timer_remaining = 600
     
     for cb in client._callbacks:
         cb("APO-456")
     await hass.async_block_till_done()
 
-    # Validate Probe Sensor
-    probe_state = hass.states.get("sensor.test_oven_probe_temperature")
-    assert probe_state is not None
-    assert probe_state.state == "54.0"
-    
+
     # Validate Timer Sensor
     timer_state = hass.states.get("sensor.test_oven_timer_remaining")
     assert timer_state is not None
@@ -34,11 +25,7 @@ async def test_sensor_states(hass, init_integration):
     
     # Send APC telemetry
     apc_state = client.devices["APC-123"].state
-    apc_state.raw_state = {
-        "payload": {
-            "timer": {"remaining": "120"}
-        }
-    }
+    apc_state.timer.remaining = 120
     
     for cb in client._callbacks:
         cb("APC-123")
