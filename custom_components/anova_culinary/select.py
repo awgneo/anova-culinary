@@ -200,12 +200,15 @@ class AnovaTimerTriggerSelect(SelectEntity):
         from .anova_api.apo.models import AnovaPOTimer
         try:
             curr_stage = state.cook.current_stage
-            if curr_stage and isinstance(curr_stage.advance, AnovaPOTimer):
-                t = curr_stage.advance.trigger
-                if t == AnovaPOTimerTrigger.IMMEDIATELY: self._attr_current_option = "Immediately"
-                elif t == AnovaPOTimerTrigger.PREHEATED: self._attr_current_option = "When Preheated"
-                elif t == AnovaPOTimerTrigger.FOOD_DETECTED: self._attr_current_option = "Food Detected"
-                else: self._attr_current_option = "Manually"
+            if curr_stage:
+                if isinstance(curr_stage.advance, AnovaPOTimer):
+                    t = curr_stage.advance.trigger
+                    if t == AnovaPOTimerTrigger.IMMEDIATELY: self._attr_current_option = "Immediately"
+                    elif t == AnovaPOTimerTrigger.PREHEATED: self._attr_current_option = "When Preheated"
+                    elif t == AnovaPOTimerTrigger.FOOD_DETECTED: self._attr_current_option = "Food Detected"
+                    else: self._attr_current_option = "Manually"
+                else:
+                    self._attr_current_option = "Manually"
         except: pass
         self.async_write_ha_state()
 

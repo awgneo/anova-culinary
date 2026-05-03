@@ -123,8 +123,11 @@ class AnovaTimerTarget(NumberEntity):
         
         try:
             curr_stage = state.cook.current_stage
-            if curr_stage and isinstance(curr_stage.advance, AnovaPOTimer):
-                self._attr_native_value = int(curr_stage.advance.duration / 60.0) # show minutes
+            if curr_stage:
+                if isinstance(curr_stage.advance, AnovaPOTimer):
+                    self._attr_native_value = int(curr_stage.advance.duration / 60.0) # show minutes
+                else:
+                    self._attr_native_value = 0
         except: pass
         self.async_write_ha_state()
 

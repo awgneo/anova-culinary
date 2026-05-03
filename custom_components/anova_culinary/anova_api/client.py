@@ -149,6 +149,15 @@ class AnovaClient:
             return
 
         await self.send_command(cmd)
+        
+        # Optimistically update the local state to provide instant UI feedback
+        if device.state:
+            device.state.is_running = True
+            if isinstance(cook, AnovaPOCook):
+                device.state.cook = copy.deepcopy(cook)
+            # Fire callbacks instantly so all dependent entities refresh
+            for cb in self._callbacks:
+                cb(device_id)
 
     async def update_cook(self, device_id: str, cook: AnovaPOCook):
         """Legacy helper matching update API; falls back to exact update implementation."""
@@ -173,7 +182,12 @@ class AnovaClient:
             return
             
         await self.send_command(cmd)
-
+        
+        # Optimistically update the local state
+        if device.state:
+            device.state.is_running = False
+            for cb in self._callbacks:
+                cb(device_id)
 
     async def _listen(self):
         """Listen to websocket messages."""
