@@ -189,14 +189,14 @@ class AnovaSteamSwitch(SwitchEntity):
     """Steam toggle switch for Anova Precision Oven."""
 
     _attr_has_entity_name = True
-    _attr_name = "Steam Toggle"
+    _attr_name = "Steam Switch"
     _attr_icon = "mdi:water"
 
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         """Initialize."""
         self._client = client
         self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_steam_toggle"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_steam_switch"
         
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device.id)},

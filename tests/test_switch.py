@@ -51,7 +51,7 @@ async def test_switch_states_and_commands(hass, init_integration):
         "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
     ) as mock_play:
         await hass.services.async_call(
-            "switch", "turn_on", {"entity_id": "switch.test_oven_steam_toggle"}, blocking=True
+            "switch", "turn_on", {"entity_id": "switch.test_oven_steam_switch"}, blocking=True
         )
         mock_play.assert_called_once()
         called_cook = mock_play.call_args[0][1]
@@ -62,7 +62,7 @@ async def test_switch_states_and_commands(hass, init_integration):
         "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
     ) as mock_play:
         await hass.services.async_call(
-            "switch", "turn_off", {"entity_id": "switch.test_oven_steam_toggle"}, blocking=True
+            "switch", "turn_off", {"entity_id": "switch.test_oven_steam_switch"}, blocking=True
         )
         mock_play.assert_called_once()
         called_cook = mock_play.call_args[0][1]
