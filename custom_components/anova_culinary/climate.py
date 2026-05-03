@@ -198,7 +198,7 @@ class AnovaProbe(ClimateEntity):
         """Initialize the climate entity."""
         self._client = client
         self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_probe_target"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_probe"
         
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device.id)},

@@ -72,7 +72,7 @@ class AnovaDoorSensor(AnovaBinarySensor):
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):
         super().__init__(client, device)
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_door_status"
 
     def _update_from_state(self, state) -> None:
         # For Home Assistant Door class: False = Closed, True = Open
@@ -86,7 +86,7 @@ class AnovaCavityLampSensor(AnovaBinarySensor):
 
     def __init__(self, client: AnovaClient, device: AnovaDevice):
         super().__init__(client, device)
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_cavity_lamp"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_cavity_light"
 
     def _update_from_state(self, state) -> None:
         self._attr_is_on = state.nodes.cavity_lamp_on
