@@ -31,8 +31,8 @@ async def async_setup_entry(
         if device.product == AnovaProduct.APO:
             entities.extend([
                 AnovaHeatingElementSelect(client, device),
-                AnovaFanSpeedSelect(client, device),
-                AnovaTimerTriggerSelect(client, device),
+                AnovaFanSelect(client, device),
+                AnovaTimerStartsSelect(client, device),
             ])
             
     async_add_entities(entities)
@@ -101,7 +101,7 @@ class AnovaHeatingElementSelect(SelectEntity):
         cook.current_stage.heating_elements = h
         await self._client.play_cook(self._device.id, cook)
 
-class AnovaFanSpeedSelect(SelectEntity):
+class AnovaFanSelect(SelectEntity):
     """Fan speed selector."""
 
     _attr_has_entity_name = True
@@ -112,7 +112,7 @@ class AnovaFanSpeedSelect(SelectEntity):
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
         self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_fan_speed"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_fan"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device.id)},
             name=self._device.name,
@@ -161,7 +161,7 @@ class AnovaFanSpeedSelect(SelectEntity):
         await self._client.play_cook(self._device.id, cook)
 
 
-class AnovaTimerTriggerSelect(SelectEntity):
+class AnovaTimerStartsSelect(SelectEntity):
     """Timer Trigger logic selector."""
 
     _attr_has_entity_name = True
@@ -172,7 +172,7 @@ class AnovaTimerTriggerSelect(SelectEntity):
     def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
         self._client = client
         self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_timer_trigger"
+        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_timer_starts"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device.id)},
             name=self._device.name,

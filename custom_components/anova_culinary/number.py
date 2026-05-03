@@ -25,14 +25,14 @@ async def async_setup_entry(
     for device_id, device in client.devices.items():
         if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaSteamPercentage(client, device),
-                AnovaTimerTarget(client, device),
+                AnovaSteam(client, device),
+                AnovaTimer(client, device),
             ])
             
     async_add_entities(entities)
 
 
-class AnovaSteamPercentage(NumberEntity):
+class AnovaSteam(NumberEntity):
     """Steam percentage slider for Anova APO."""
 
     _attr_has_entity_name = True
@@ -83,7 +83,7 @@ class AnovaSteamPercentage(NumberEntity):
             cook.current_stage.steam = int(value)
             await self._client.play_cook(self._device.id, cook)
 
-class AnovaTimerTarget(NumberEntity):
+class AnovaTimer(NumberEntity):
     """Timer duration slider in minutes."""
 
     _attr_has_entity_name = True

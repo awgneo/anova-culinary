@@ -23,9 +23,9 @@ async def async_setup_entry(
     for device_id, device in client.devices.items():
         if device.product == AnovaProduct.APO:
             entities.extend([
-                AnovaDoorSensor(client, device),
-                AnovaCavityLampSensor(client, device),
-                AnovaCameraEmptySensor(client, device),
+                AnovaDoorStatusSensor(client, device),
+                AnovaCavityLightSensor(client, device),
+                AnovaCameraStatusSensor(client, device),
             ])
     async_add_entities(entities)
 
@@ -65,7 +65,7 @@ class AnovaBinarySensor(BinarySensorEntity):
         pass
 
 
-class AnovaDoorSensor(AnovaBinarySensor):
+class AnovaDoorStatusSensor(AnovaBinarySensor):
     _attr_name = "Door Status"
     _attr_device_class = BinarySensorDeviceClass.DOOR
     _attr_icon = "mdi:door"
@@ -79,7 +79,7 @@ class AnovaDoorSensor(AnovaBinarySensor):
         self._attr_is_on = not state.nodes.door_closed
 
 
-class AnovaCavityLampSensor(AnovaBinarySensor):
+class AnovaCavityLightSensor(AnovaBinarySensor):
     _attr_name = "Cavity Light"
     _attr_device_class = BinarySensorDeviceClass.LIGHT
     _attr_icon = "mdi:lightbulb"
@@ -92,7 +92,7 @@ class AnovaCavityLampSensor(AnovaBinarySensor):
         self._attr_is_on = state.nodes.cavity_lamp_on
 
 
-class AnovaCameraEmptySensor(AnovaBinarySensor):
+class AnovaCameraStatusSensor(AnovaBinarySensor):
     _attr_name = "Camera Status"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
     _attr_icon = "mdi:cctv"

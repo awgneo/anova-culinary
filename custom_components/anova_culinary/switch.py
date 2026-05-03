@@ -28,7 +28,7 @@ async def async_setup_entry(
         if device.product == AnovaProduct.APO:
             entities.extend([
                 AnovaSousVideSwitch(client, device),
-                AnovaDoorLampSwitch(client, device)
+                AnovaDoorLightSwitch(client, device)
             ])
             
     async_add_entities(entities)
@@ -100,7 +100,7 @@ class AnovaSousVideSwitch(SwitchEntity):
             cook.current_stage.sous_vide = False
             await self._client.play_cook(self._device.id, cook)
 
-class AnovaDoorLampSwitch(SwitchEntity):
+class AnovaDoorLightSwitch(SwitchEntity):
     """Door Lamp switch for Anova Precision Oven."""
 
     _attr_has_entity_name = True
