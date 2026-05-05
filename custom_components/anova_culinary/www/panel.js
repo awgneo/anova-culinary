@@ -686,6 +686,7 @@ class AnovaCulinary extends LitElement {
         flex: 1;
         display: flex;
         align-items: center;
+        margin: 0 16px;
       }
 
       .search-icon {
