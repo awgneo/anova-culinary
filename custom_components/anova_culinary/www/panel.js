@@ -117,7 +117,7 @@ class AnovaCulinary extends LitElement {
   }
 
   _handleSearch(e) {
-    this.searchQuery = e.target.value.toLowerCase();
+    this.searchQuery = e.target.value;
   }
 
   _triggerFileImport() {
@@ -347,8 +347,9 @@ class AnovaCulinary extends LitElement {
       return this.renderEditor();
     }
 
+    const searchLower = this.searchQuery.toLowerCase();
     const filtered = this.recipes
-      .filter(r => r.name.toLowerCase().includes(this.searchQuery))
+      .filter(r => r.name.toLowerCase().includes(searchLower))
       .sort((a, b) => this.recipeSortDirection * a.name.localeCompare(b.name));
 
     return html`
