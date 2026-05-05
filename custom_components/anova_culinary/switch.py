@@ -92,6 +92,8 @@ class AnovaSousVideSwitch(SwitchEntity):
         cook = self._client.get_current_cook(self._device.id)
         if cook and cook.current_stage:
             cook.current_stage.sous_vide = True
+            if cook.current_stage.temperature > 100.0:
+                cook.current_stage.temperature = 100.0
             await self._client.play_cook(self._device.id, cook)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
