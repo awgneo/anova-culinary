@@ -34,6 +34,7 @@ class AnovaClient:
         
         self._callbacks: list[Callable[[str], None]] = []
         self._listen_task: Optional[asyncio.Task] = None
+        self._is_closing: bool = False
 
     @property
     def devices(self) -> Dict[str, AnovaDevice]:
@@ -62,21 +63,30 @@ class AnovaClient:
         return remove_callback
 
     async def connect(self) -> bool:
-        """Connect to the Anova websocket."""
+        """Connect to the Anova websocket and start maintenance loop."""
+        self._is_closing = False
+        success = await self._connect_once()
+        if success:
+            self._listen_task = asyncio.create_task(self._maintain_connection())
+        return success
+
+    async def _connect_once(self) -> bool:
+        """Establish a single websocket connection."""
         try:
             self._token = await self._auth_manager.get_valid_token()
         except AnovaAuthError as err:
             raise ValueError("cannot_connect") from err
 
         url = f"{ANOVA_WS_URL}?token={self._token}&supportedAccessories=APC,APO"
+        if self._ws and not self._ws.closed:
+            await self._ws.close()
+            
         try:
             self._ws = await self._session.ws_connect(
                 url,
                 timeout=10,
                 heartbeat=30
             )
-            # Start background listener task
-            self._listen_task = asyncio.create_task(self._listen())
             return True
         except aiohttp.ClientResponseError as err:
             if err.status == 401:
@@ -87,6 +97,7 @@ class AnovaClient:
 
     async def close(self):
         """Close connection."""
+        self._is_closing = True
         if self._listen_task:
             self._listen_task.cancel()
             try:
@@ -190,34 +201,45 @@ class AnovaClient:
             for cb in self._callbacks:
                 cb(device_id)
 
-    async def _listen(self):
-        """Listen to websocket messages."""
-        if not self._ws:
-            return
-            
-        try:
-            async for msg in self._ws:
-                # Proactively rotate token if nearing expiration on the active connection
-                import time
-                if time.time() >= self._auth_manager._expires_at:
-                    _LOGGER.debug("OAuth Token expired mid-stream, rotating via reconnect.")
-                    # Rotating means we must drop and explicitly reconnect since tokens
-                    # are passed dynamically in query parameters only on handshake.
-                    await self.close()
-                    await self.connect()
-                    return
+    async def _maintain_connection(self):
+        """Background loop to maintain the websocket connection and token rotation."""
+        import time
+        while not self._is_closing:
+            try:
+                if not self._ws or self._ws.closed:
+                    _LOGGER.info("Websocket disconnected. Reconnecting...")
+                    await asyncio.sleep(2)
+                    if self._is_closing:
+                        break
+                    success = await self._connect_once()
+                    if not success:
+                        continue
                         
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    try:
-                        data = json.loads(msg.data)
-                        self._handle_message(data)
-                    except json.JSONDecodeError:
-                        _LOGGER.error("Failed to decode message: %s", msg.data)
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    _LOGGER.error("Websocket error: %s", self._ws.exception())
-                    break
-        except Exception as e:
-            _LOGGER.error("Listener loop error: %s", e)
+                async for msg in self._ws:
+                    if self._is_closing:
+                        break
+                        
+                    # Proactively rotate token if nearing expiration on the active connection
+                    if time.time() >= self._auth_manager._expires_at:
+                        _LOGGER.debug("OAuth Token expired mid-stream, dropping connection to force rotation.")
+                        await self._ws.close()
+                        break
+                        
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        try:
+                            data = json.loads(msg.data)
+                            self._handle_message(data)
+                        except json.JSONDecodeError:
+                            _LOGGER.error("Failed to decode message: %s", msg.data)
+                    elif msg.type == aiohttp.WSMsgType.ERROR:
+                        _LOGGER.error("Websocket error: %s", self._ws.exception())
+                        break
+                        
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                _LOGGER.error("Connection maintenance error: %s", e)
+                await asyncio.sleep(2)
 
     def _handle_message(self, data: Dict[str, Any]):
         """Handle incoming decoded JSON messages."""
