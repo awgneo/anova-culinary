@@ -80,7 +80,7 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
                     "temperatureBulbs": bulb_dict,
                 },
                 "exit": {"conditions": {"and": {}}},
-                "entry": {"conditions": {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}}
+                "entry": {"conditions": {"and": {}}}
             }
             
             s_dict["do"]["steamGenerators"] = {
@@ -92,6 +92,7 @@ def cook_to_payload(cook: AnovaPOCook, device: AnovaDevice) -> dict:
                 trigger_cond = None
                 if stage.advance.trigger == AnovaPOTimerTrigger.PREHEATED:
                     trigger_cond = {"and": {f"nodes.temperatureBulbs.{mode}.current.celsius": {">=": target_temp}}}
+                    s_dict["entry"]["conditions"]["and"][f"nodes.temperatureBulbs.{mode}.current.celsius"] = {">=": target_temp}
                 elif stage.advance.trigger == AnovaPOTimerTrigger.MANUALLY:
                     trigger_cond = {"and": {"userAction": {"=": True}}}
                 elif stage.advance.trigger == AnovaPOTimerTrigger.FOOD_DETECTED:
