@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# anova-culinary: a Home Assistant integration for Anova precision cookers and ovens
+# ==============================================================================
+# A Python project managed with uv: 'flow test' runs its pytest suite (test/) through uv.
+
+source ./flows/base
+source ./flows/cell/base
+
+# Dependencies
+FLOWS_DEPENDENCIES+=(uv)
+
+# Hooks
+# In CI, 'flow ci test' installs the project and its dev dependencies first (uv.lock, as locked)
+CI_SETUP_HOOKS+=(anova-packages)
+
+anova-packages() {
+  uv sync --frozen
+}
+
+# Lints the integration and its tests with ruff
+anova-lint() {
+  uv run ruff check custom_components test || abort "ruff found problems" 2
+  success "Lint passed"
+}
+
+anova-usage() {
+  echo "lint|Lint the integration and its tests (ruff)"
+}
+
+anova-flow() {
+  case "$1" in
+    lint) anova-lint; return $? ;;
+    *) return 127 ;;
+  esac
+}
+
+flows-register "anova" true
+flows-dispatch "$@"
