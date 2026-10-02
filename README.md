@@ -48,3 +48,14 @@ The protocol library acts as a two-way transpiler between HTTP Websockets and Ho
 2. **Reverse Translation (Oven -> HA):** The Anova Cloud broadcasts active multi-stage cook payloads constantly via push telemetry. The module completely intercepts this JSON, extracts the physical sensors natively into an `APONodes` dataclass, reverse-engineers the AST logic trees, and drops it into Home Assistant strictly as an `APOCook` object. This natively allows you to build a complex multi-stage recipe on your official smartphone app, beam it to the oven, and use Home Assistant to intercept and save the active broadcast locally forever!
 
 *(Note: Anova Precision Cookers (sous vide sticks) are simple single-state heaters and bypass this translation engine entirely).*
+
+## Developing
+
+A Python project managed with [uv](https://docs.astral.sh/uv/); everything runs through `./flow` (the [flows](../../cellular/flows) task runner):
+
+| Command | What it does |
+| --- | --- |
+| `flow test` | Runs the pytest suite under `test/` through uv (uv installs Python 3.14 and the dev dependencies) |
+| `flow lint` | Lints the integration and its tests with ruff |
+
+Changes go through flows' branch workflow (`flow branch`, `flow commit`, `flow promote`, `flow merge`). Every pushed branch is tested in castle's CI, and `main` only merges a green Pull Request.
