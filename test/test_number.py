@@ -1,41 +1,32 @@
-"""Tests for the Anova Number component."""
+"""Tests for the oven's steam and timer numbers, and the adjust_timer action."""
 
-import pytest
-from unittest.mock import patch
-from custom_components.anova_culinary.const import DOMAIN
-from custom_components.anova_culinary.anova_api.apo import AnovaPOCook, AnovaPORecipe, AnovaPOStage
+from homeassistant.const import STATE_UNAVAILABLE
 
-@pytest.mark.asyncio
-async def test_number_states_and_commands(hass, init_integration):
-    """Test number updates and commands for APO timer."""
-    client = hass.data[DOMAIN][init_integration.entry_id]["client"]
-    
-    cook = AnovaPOCook(
-        recipe=AnovaPORecipe(
-            stages=[AnovaPOStage(steam=50)]
-        ),
-        active_stage_index=0
+
+async def set_value(hass, entity_id: str, value: float) -> None:
+    await hass.services.async_call("number", "set_value", {"entity_id": entity_id, "value": value}, blocking=True)
+
+
+async def test_states(hass, sent) -> None:
+    """Steam and the timer (minutes) come from the running stage."""
+    assert hass.states.get("number.test_oven_steam").state == "100"
+    assert hass.states.get("number.test_oven_timer").state == "5"
+    assert hass.states.get("number.idle_oven_timer").state == STATE_UNAVAILABLE
+
+
+async def test_commands(hass, sent) -> None:
+    """Steam and the timer's length change alone."""
+    await set_value(hass, "number.test_oven_steam", 50)
+    await set_value(hass, "number.test_oven_timer", 20)
+    assert sent.commands == [
+        ("CMD_APO_SET_STEAM_GENERATORS", {"mode": "relative-humidity", "relativeHumidity": {"setpoint": 50}}),
+        ("CMD_APO_SET_TIMER", {"initial": 1200}),
+    ]
+
+
+async def test_adjust_timer(hass, sent) -> None:
+    """adjust_timer adds minutes to the timer entity."""
+    await hass.services.async_call(
+        "anova_culinary", "adjust_timer", {"entity_id": "number.test_oven_timer", "amount": 10}, blocking=True
     )
-    client.devices["APO-456"].state.cook = cook
-    client.devices["APO-456"].state.is_running = True
-    
-    for cb in client._callbacks:
-        cb("APO-456")
-    await hass.async_block_till_done()
-
-    # Validate state is extracted perfectly from stage boundaries
-    state = hass.states.get("number.test_oven_steam")
-    assert state is not None
-    assert state.state == "50"
-    
-    # Mutate the steam slider
-    with patch("custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook") as mock_play:
-        await hass.services.async_call(
-            "number", "set_value", 
-            {"entity_id": "number.test_oven_steam", "value": "100"}, 
-            blocking=True
-        )
-        
-        mock_play.assert_called_once()
-        called_cook = mock_play.call_args[0][1]
-        assert called_cook.current_stage.steam == 100
+    assert sent.commands == [("CMD_APO_SET_TIMER", {"initial": 900})]

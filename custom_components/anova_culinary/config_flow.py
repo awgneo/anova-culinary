@@ -1,86 +1,80 @@
-"""Config flow for Anova API integration."""
+"""Config flow for Anova API integration: sign in with the Anova account."""
+
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from collections.abc import Mapping
+from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .anova_api.client import AnovaClient
-from .anova_api.auth import AnovaAuth
-from .anova_api.exceptions import AnovaAuthError, AnovaConnectionError
-from .const import DOMAIN, CONF_TOKEN
+from .anova_api import AnovaAuth, AnovaAuthError, AnovaClient, AnovaConnectionError, AnovaSignIn
+from .const import CONF_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required("email"): str,
-        vol.Required("password"): str,
+        vol.Required(CONF_EMAIL): str,
+        vol.Required(CONF_PASSWORD): str,
     }
 )
 
 
-async def validate_input(hass: HomeAssistant, data: dict) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
-
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
-    """
-    email = data.get("email")
-    password = data.get("password")
-    session = async_get_clientsession(hass)
-
-    # User provided native login, fetch the Firebase refresh token
-    try:
-        auth_data = await AnovaAuth.login(session, email, password)
-        token = auth_data["refresh_token"]
-    except AnovaAuthError:
-        raise ValueError("invalid_auth")
-
-    # Verify the token actually works in the client model
-    client = AnovaClient(token=token, session=session)
-    try:
-        success = await client.connect()
-        if not success:
-            raise AnovaConnectionError("Connection returned false")
-    except AnovaAuthError:
-        raise ValueError("invalid_auth")
-    except Exception:
-        _LOGGER.exception("Unexpected exception")
-        raise ValueError("cannot_connect")
-    finally:
-        await client.close()
-
-    # Return info to store in the entry
-    return {"title": "Anova Culinary", "token": token}
-
-
-class AnovaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AnovaConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Anova API."""
 
     VERSION = 1
 
-    async def async_step_user(
-        self, user_input: Optional[dict[str, Any]] = None
-    ) -> config_entries.ConfigFlowResult:
-        """Handle the initial step."""
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Sign in with an Anova account."""
         errors: dict[str, str] = {}
-
         if user_input is not None:
-            try:
-                info = await validate_input(self.hass, user_input)
-                # Overwrite the user input with the verified token (or Firebase refresh token)
-                return self.async_create_entry(title=info["title"], data={CONF_TOKEN: info["token"]})
-            except ValueError as err:
-                errors["base"] = str(err)
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+            sign_in = await self._sign_in(user_input, errors)
+            if sign_in is not None:
+                await self.async_set_unique_id(sign_in.user_id)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(title=user_input[CONF_EMAIL], data={CONF_TOKEN: sign_in.refresh_token})
+        return self.async_show_form(step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors)
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
-            errors=errors,
-        )
+    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
+        """Anova stopped accepting the sign-in."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Sign in again with the same account."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            sign_in = await self._sign_in(user_input, errors)
+            if sign_in is not None:
+                await self.async_set_unique_id(sign_in.user_id)
+                self._abort_if_unique_id_mismatch(reason="wrong_account")
+                return self.async_update_reload_and_abort(
+                    self._get_reauth_entry(), data_updates={CONF_TOKEN: sign_in.refresh_token}
+                )
+        return self.async_show_form(step_id="reauth_confirm", data_schema=STEP_USER_DATA_SCHEMA, errors=errors)
+
+    async def _sign_in(self, user_input: dict[str, Any], errors: dict[str, str]) -> AnovaSignIn | None:
+        """Signs in and checks the connection, filling `errors` on failure."""
+        session = async_get_clientsession(self.hass)
+        try:
+            sign_in = await AnovaAuth.login(session, user_input[CONF_EMAIL], user_input[CONF_PASSWORD])
+            client = AnovaClient(sign_in.refresh_token, session)
+            try:
+                await client.connect()
+            finally:
+                await client.close()
+        except AnovaAuthError:
+            errors["base"] = "invalid_auth"
+        except AnovaConnectionError:
+            errors["base"] = "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return sign_in
+        return None

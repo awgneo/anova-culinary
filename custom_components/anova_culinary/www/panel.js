@@ -1,8 +1,12 @@
-import {
-  LitElement,
-  html,
-  css,
-} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
+// Lit, bundled with the panel (lit-core 3.2.1) so it loads without internet access
+import { LitElement, html, css } from "./lit-core.min.js";
+
+const TRANSITIONS = [
+  ["automatic", "Automatic"],
+  ["manual", "Manual"],
+  ["food_removed", "When Food Is Removed"],
+];
+const RACKS = [1, 2, 3, 4, 5];
 
 class AnovaCulinary extends LitElement {
   static get properties() {
@@ -22,7 +26,8 @@ class AnovaCulinary extends LitElement {
       showPlayModal: { type: Boolean },
       recipeToPlay: { type: Object },
       selectedOvens: { type: Array },
-      recipeSortDirection: { type: Number }
+      recipeSortDirection: { type: Number },
+      stageLimits: { type: Array }
     };
   }
 
@@ -40,6 +45,7 @@ class AnovaCulinary extends LitElement {
     this.recipeToPlay = null;
     this.selectedOvens = [];
     this.recipeSortDirection = 1;
+    this.stageLimits = [];
   }
 
   async firstUpdated() {
@@ -133,6 +139,7 @@ class AnovaCulinary extends LitElement {
           const parsed = JSON.parse(event.target.result);
           parsed.id = null; // Strip internal ID so it becomes a new recipe
           this.editingRecipe = this._normalizeUnits(parsed);
+          this._refreshLimits();
           this.requestUpdate();
         } catch (err) {
           console.error("Failed to parse recipe JSON", err);
@@ -162,10 +169,27 @@ class AnovaCulinary extends LitElement {
 
   _startCreate() {
     this.editingRecipe = { name: "", stages: [] };
+    this._refreshLimits();
+  }
+
+  // Each stage's temperature range and allowed fans, from the integration's rules (limits.py)
+  async _refreshLimits() {
+    if (!this.editingRecipe || !this.hass) return;
+    try {
+      this.stageLimits = await Promise.all(this.editingRecipe.stages.map(stage =>
+        this.hass.connection.sendMessagePromise({
+          type: `${this.panel.config.domain}/limits`,
+          stage: { ...stage, advance: null }
+        }).then(result => result.stage)
+      ));
+    } catch (e) {
+      console.error("Failed fetching stage limits", e);
+    }
   }
 
   _startEdit(recipe) {
     this.editingRecipe = this._normalizeUnits(recipe);
+    this._refreshLimits();
   }
 
   _importCook() {
@@ -182,6 +206,7 @@ class AnovaCulinary extends LitElement {
 
     this.editingRecipe = this._normalizeUnits(importedRecipe);
     this.activeCook = null;
+    this._refreshLimits();
     this.requestUpdate();
   }
 
@@ -195,8 +220,11 @@ class AnovaCulinary extends LitElement {
       steam: 0,
       heating_elements: "rear",
       fan: "high",
-      advance: null
+      advance: null,
+      transition: "automatic",
+      rack: null
     }];
+    this._refreshLimits();
     this.requestUpdate();
   }
 
@@ -208,8 +236,10 @@ class AnovaCulinary extends LitElement {
     if (field === "sous_vide") value = (value === "true" || value === true);
     if (field === "temperature") value = parseFloat(value) || 0.0;
     if (field === "steam") value = parseInt(value) || 0;
+    if (field === "rack") value = parseInt(value) || null;
 
     stage[field] = value;
+    this._refreshLimits();
     this.requestUpdate();
   }
 
@@ -232,6 +262,7 @@ class AnovaCulinary extends LitElement {
   _removeStage(index) {
     if (!this.editingRecipe) return;
     this.editingRecipe.stages.splice(index, 1);
+    this._refreshLimits();
     this.requestUpdate();
   }
 
@@ -243,6 +274,7 @@ class AnovaCulinary extends LitElement {
     const temp = stages[index];
     stages[index] = stages[newIndex];
     stages[newIndex] = temp;
+    this._refreshLimits();
     this.requestUpdate();
   }
 
@@ -550,9 +582,10 @@ class AnovaCulinary extends LitElement {
                     <div class="form-group">
                         <label>TEMPERATURE</label>
                         <div style="position:relative; display:flex;">
-                          <input type="number" step="0.1" .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="width:100%; padding-right:45px;" />
+                          <input type="number" step="0.1" min=${this.stageLimits[i]?.min ?? ""} max=${this.stageLimits[i]?.max ?? ""} .value=${stage.temperature} @input=${e => this._updateStage(i, 'temperature', e.target.value)} style="width:100%; padding-right:45px;" />
                           <span class="unit">°${this._getGlobalUnit()}</span>
                         </div>
+                        ${this.stageLimits[i] ? html`<span class="hint ${this._outOfRange(stage, i) ? 'error' : ''}">${this.stageLimits[i].min}–${this.stageLimits[i].max} °${this._getGlobalUnit()}</span>` : ''}
                     </div>
                     
                     <div class="form-group">
@@ -575,21 +608,38 @@ class AnovaCulinary extends LitElement {
                     <div class="form-group">
                         <label>FAN SPEED</label>
                         <select .value=${stage.fan} @change=${e => this._updateStage(i, 'fan', e.target.value)}>
-                            <option value="off">Off</option>
-                            <option value="low">Low</option>
-                            <option value="medium">Medium</option>
-                            <option value="high">High</option>
+                            ${[["off", "Off"], ["low", "Low"], ["medium", "Medium"], ["high", "High"]].map(([value, label]) => html`
+                              <option value=${value} ?disabled=${this.stageLimits[i] && !this.stageLimits[i].fans.includes(value)}>${label}</option>
+                            `)}
                         </select>
+                        ${this.stageLimits[i] && !this.stageLimits[i].fans.includes(stage.fan) ? html`<span class="hint error">These settings run the fan on High</span>` : ''}
                     </div>
 
                     <div class="form-group">
-                        <label>TRANSITION (TIMER/PROBE)</label>
+                        <label>TIMER / PROBE</label>
                         <select .value=${stage.advance === null ? "none" : (stage.advance.target !== undefined ? "probe" : "timer")} @change=${e => this._updateAdvance(i, 'type', e.target.value)}>
-                            <option value="none">Manual Transition</option>
+                            <option value="none">None</option>
                             <option value="timer">Timer</option>
                             <option value="probe">Food Probe</option>
                         </select>
                     </div>
+
+                    <div class="form-group">
+                        <label>RACK</label>
+                        <select .value=${stage.rack ? String(stage.rack) : ""} @change=${e => this._updateStage(i, 'rack', e.target.value)}>
+                            <option value="">Default (3)</option>
+                            ${RACKS.map(rack => html`<option value=${String(rack)}>${rack}</option>`)}
+                        </select>
+                    </div>
+
+                    ${i > 0 ? html`
+                    <div class="form-group">
+                        <label>TRANSITION</label>
+                        <select .value=${stage.transition || "automatic"} @change=${e => this._updateStage(i, 'transition', e.target.value)}>
+                            ${TRANSITIONS.map(([value, label]) => html`<option value=${value}>${label}</option>`)}
+                        </select>
+                    </div>
+                    ` : ''}
 
                     ${stage.advance && stage.advance.duration !== undefined ? html`
                     <div class="form-group slide-in">
@@ -627,6 +677,11 @@ class AnovaCulinary extends LitElement {
     `;
   }
 
+
+  _outOfRange(stage, i) {
+    const limits = this.stageLimits[i];
+    return limits && (stage.temperature < limits.min || stage.temperature > limits.max);
+  }
 
   static get styles() {
     return css`
@@ -951,6 +1006,15 @@ class AnovaCulinary extends LitElement {
         transform: translateY(-50%);
         color: var(--secondary-text-color);
         pointer-events: none;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--secondary-text-color);
+      }
+
+      .hint.error {
+        color: var(--error-color, #f44336);
       }
 
       .empty-state {

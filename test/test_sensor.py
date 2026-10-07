@@ -1,36 +1,20 @@
-"""Tests for the Anova sensors."""
+"""Tests for the sensors."""
 
-import pytest
-from homeassistant.const import ATTR_FRIENDLY_NAME
-from custom_components.anova_culinary.const import DOMAIN
-
-@pytest.mark.asyncio
-async def test_sensor_states(hass, init_integration):
-    """Test sensor telemetry updates from both devices."""
-    client = hass.data[DOMAIN][init_integration.entry_id]["client"]
-    
-    # Send APO telemetry
-    apo_state = client.devices["APO-456"].state
-    apo_state.nodes.timer_remaining = 600
-    
-    for cb in client._callbacks:
-        cb("APO-456")
-    await hass.async_block_till_done()
+from homeassistant.helpers import entity_registry as er
 
 
-    # Validate Timer Sensor
-    timer_state = hass.states.get("sensor.test_oven_timer_remaining")
-    assert timer_state is not None
-    assert timer_state.state == "600"
-    
-    # Send APC telemetry
-    apc_state = client.devices["APC-123"].state
-    apc_state.timer.remaining = 120
-    
-    for cb in client._callbacks:
-        cb("APC-123")
-    await hass.async_block_till_done()
-    
-    apc_timer_state = hass.states.get("sensor.test_cooker_timer_remaining")
-    assert apc_timer_state is not None
-    assert apc_timer_state.state == "120"
+async def test_states(hass, sent) -> None:
+    """Timer, recipe and rack readings."""
+    assert hass.states.get("sensor.test_oven_timer_remaining").state == "300"
+    assert hass.states.get("sensor.test_oven_recipe").state == "Manual Cook"
+    assert hass.states.get("sensor.test_oven_rack_position").state == "unknown"
+    assert hass.states.get("sensor.idle_oven_recipe").state == "None"
+    assert hass.states.get("sensor.idle_oven_timer_elapsed").state == "0"
+    assert int(hass.states.get("sensor.test_oven_timer_elapsed").state) > 0
+    assert hass.states.get("sensor.test_cooker_timer_remaining").state == "0"
+
+
+async def test_diagnostics_disabled_by_default(hass, sent) -> None:
+    """Hardware readings exist but start disabled."""
+    entry = er.async_get(hass).async_get("sensor.test_oven_rear_heater_power")
+    assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION

@@ -1,69 +1,32 @@
-"""Tests for the Anova switches."""
+"""Tests for the oven switches."""
 
-import pytest
-from unittest.mock import patch
-from homeassistant.const import STATE_ON, STATE_OFF
-from custom_components.anova_culinary.const import DOMAIN
-from custom_components.anova_culinary.anova_api.apo import AnovaPOCook, AnovaPORecipe, AnovaPOStage
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 
-@pytest.mark.asyncio
-async def test_switch_states_and_commands(hass, init_integration):
-    """Test switch telemetry updates and mutative commands."""
-    client = hass.data[DOMAIN][init_integration.entry_id]["client"]
-    
-    # Provide an active recipe locally so the switch resolves its boundary
-    cook = AnovaPOCook(
-        recipe=AnovaPORecipe(
-            stages=[AnovaPOStage(sous_vide=False)]
-        ),
-        active_stage_index=0
-    )
-    client.devices["APO-456"].state.cook = cook
-    client.devices["APO-456"].state.is_running = True
-    
-    # Fire dummy telemetry to trigger UI reflows
-    for cb in client._callbacks:
-        cb("APO-456")
-    await hass.async_block_till_done()
 
-    # Validate state initializes perfectly to mock bounds
-    state = hass.states.get("switch.test_oven_sous_vide")
-    assert state is not None
-    assert state.state == STATE_OFF
-    
-    # Validate the toggle mutations compile backwards cleanly
-    with patch(
-        "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
-    ) as mock_play:
-        await hass.services.async_call(
-            "switch", "turn_on", {"entity_id": "switch.test_oven_sous_vide"}, blocking=True
-        )
-        
-        mock_play.assert_called_once()
-        called_device = mock_play.call_args[0][0]
-        called_cook = mock_play.call_args[0][1]
-        
-        assert called_device == "APO-456"
-        assert called_cook.current_stage.sous_vide is True
-        
-    # Validate the steam toggle correctly issues 100
-    with patch(
-        "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
-    ) as mock_play:
-        await hass.services.async_call(
-            "switch", "turn_on", {"entity_id": "switch.test_oven_steam_switch"}, blocking=True
-        )
-        mock_play.assert_called_once()
-        called_cook = mock_play.call_args[0][1]
-        assert called_cook.current_stage.steam == 100
+async def toggle(hass, service: str, entity_id: str) -> None:
+    await hass.services.async_call("switch", service, {"entity_id": entity_id}, blocking=True)
 
-    # Validate the steam toggle correctly issues 0
-    with patch(
-        "custom_components.anova_culinary.anova_api.client.AnovaClient.play_cook"
-    ) as mock_play:
-        await hass.services.async_call(
-            "switch", "turn_off", {"entity_id": "switch.test_oven_steam_switch"}, blocking=True
-        )
-        mock_play.assert_called_once()
-        called_cook = mock_play.call_args[0][1]
-        assert called_cook.current_stage.steam == 0
+
+async def test_states(hass, sent) -> None:
+    """Sous vide and steam follow the running stage; idle, they're unavailable but the light isn't."""
+    assert hass.states.get("switch.test_oven_sous_vide").state == STATE_ON
+    assert hass.states.get("switch.test_oven_steam_switch").state == STATE_ON
+    assert hass.states.get("switch.test_oven_door_light").state == STATE_ON
+    assert hass.states.get("switch.idle_oven_sous_vide").state == STATE_UNAVAILABLE
+    assert hass.states.get("switch.idle_oven_steam_switch").state == STATE_UNAVAILABLE
+    assert hass.states.get("switch.idle_oven_door_light").state == STATE_ON
+
+
+async def test_commands(hass, sent) -> None:
+    """Each switch sends the app's command; steam comes back at its last setting."""
+    await toggle(hass, "turn_off", "switch.test_oven_sous_vide")
+    await toggle(hass, "turn_off", "switch.test_oven_steam_switch")
+    await toggle(hass, "turn_on", "switch.test_oven_steam_switch")
+    await toggle(hass, "turn_off", "switch.test_oven_door_light")
+    assert sent.commands == [
+        ("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "dry", "dry": {"setpoint": {"celsius": 54.44}}}),
+        ("CMD_APO_SET_STEAM_GENERATORS", {"mode": "relative-humidity", "relativeHumidity": {"setpoint": 0}}),
+        ("CMD_APO_SET_STEAM_GENERATORS", {"mode": "relative-humidity", "relativeHumidity": {"setpoint": 100}}),
+        ("CMD_APO_SET_LAMP", {"on": False}),
+    ]
+    assert hass.states.get("switch.test_oven_door_light").state == STATE_OFF

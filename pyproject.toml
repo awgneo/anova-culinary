@@ -17,4 +17,10 @@ dev = [
     "pytest-cov>=7.0.0",
     "syrupy>=5.0.0",
     "ruff>=0.15.10",
+    "jsonschema>=4.26.0",
+    "pyturbojpeg==1.8.0",
 ]
+
+[tool.coverage.run]
+# The read-only command-line check (python -m ...anova_api) talks to the real cloud
+omit = ["custom_components/anova_culinary/anova_api/__main__.py"]

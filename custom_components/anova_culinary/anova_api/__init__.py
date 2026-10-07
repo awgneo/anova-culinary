@@ -1,28 +1,35 @@
-"""Anova WiFi device protocol library."""
+"""Anova WiFi device protocol library: the protocol Anova's own apps speak (PROTOCOL.md)."""
 
+from .apc import AnovaPCDevice, AnovaPCState, AnovaPCTemperatureUnit
+from .apo import AnovaPODevice, AnovaPOState
+from .auth import AnovaAuth, AnovaSignIn
 from .client import AnovaClient
-from .device import AnovaDevice, AnovaProduct
-from .apc import AnovaPCState, AnovaPCTemperatureUnit, AnovaPCTimerState
-from .apo import AnovaPOState
+from .device import AnovaDevice
 from .exceptions import (
-    AnovaException,
     AnovaAuthError,
-    AnovaConnectionError,
-    AnovaTimeoutError,
     AnovaCommandError,
+    AnovaConnectionError,
+    AnovaException,
+    AnovaTimeoutError,
+    AnovaValidationError,
 )
+from .product import AnovaProduct
 
 __all__ = [
+    "AnovaAuth",
+    "AnovaAuthError",
     "AnovaClient",
+    "AnovaCommandError",
+    "AnovaConnectionError",
     "AnovaDevice",
+    "AnovaException",
+    "AnovaPCDevice",
     "AnovaPCState",
+    "AnovaPCTemperatureUnit",
+    "AnovaPODevice",
     "AnovaPOState",
     "AnovaProduct",
-    "AnovaPCTemperatureUnit",
-    "AnovaPCTimerState",
-    "AnovaException",
-    "AnovaAuthError",
-    "AnovaConnectionError",
+    "AnovaSignIn",
     "AnovaTimeoutError",
-    "AnovaCommandError",
+    "AnovaValidationError",
 ]

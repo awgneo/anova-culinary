@@ -5,12 +5,23 @@
     "@awgneo"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "http",
+    "websocket_api"
+  ],
+  "after_dependencies": [
+    "camera",
+    "frontend",
+    "panel_custom"
+  ],
   "documentation": "https://github.com/awgneo/anova-culinary",
   "integration_type": "hub",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/awgneo/anova-culinary/issues",
-  "quality_scale": "platinum",
+  "loggers": [
+    "custom_components.anova_culinary.anova_api"
+  ],
+  "quality_scale": "gold",
   "requirements": [],
   "version": "1.0.0"
 }

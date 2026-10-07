@@ -7,6 +7,22 @@
         "data": {
           "email": "Email Address",
           "password": "Password"
+        },
+        "data_description": {
+          "email": "The email of your Anova account, as you sign in to the Anova apps.",
+          "password": "Your Anova account's password. Home Assistant keeps a sign-in token, not the password."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Anova again",
+        "description": "Anova no longer accepts this account's sign-in. Sign in again with the same account.",
+        "data": {
+          "email": "Email Address",
+          "password": "Password"
+        },
+        "data_description": {
+          "email": "The email of your Anova account, as you sign in to the Anova apps.",
+          "password": "Your Anova account's password. Home Assistant keeps a sign-in token, not the password."
         }
       }
     },
@@ -16,7 +32,222 @@
       "unknown": "An unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This Anova account is already configured."
+      "already_configured": "This Anova account is already configured.",
+      "reauth_successful": "Signed in again.",
+      "wrong_account": "Sign in with the account this entry was set up with."
+    }
+  },
+  "entity": {
+    "climate": {
+      "oven": {},
+      "probe": {
+        "name": "Probe"
+      }
+    },
+    "switch": {
+      "sous_vide": {
+        "name": "Sous Vide"
+      },
+      "steam_switch": {
+        "name": "Steam Switch"
+      },
+      "door_light": {
+        "name": "Door Light"
+      }
+    },
+    "number": {
+      "steam": {
+        "name": "Steam"
+      },
+      "timer": {
+        "name": "Timer"
+      }
+    },
+    "select": {
+      "heating_element": {
+        "name": "Heating Element"
+      },
+      "fan": {
+        "name": "Fan"
+      },
+      "timer_starts": {
+        "name": "Timer Starts"
+      }
+    },
+    "sensor": {
+      "timer_remaining": {
+        "name": "Timer Remaining"
+      },
+      "timer_elapsed": {
+        "name": "Timer Elapsed"
+      },
+      "recipe": {
+        "name": "Recipe"
+      },
+      "rack_position": {
+        "name": "Rack Position"
+      },
+      "top_heater_power": {
+        "name": "Top Heater Power"
+      },
+      "bottom_heater_power": {
+        "name": "Bottom Heater Power"
+      },
+      "rear_heater_power": {
+        "name": "Rear Heater Power"
+      },
+      "top_heater_usage": {
+        "name": "Top Heater Usage"
+      },
+      "bottom_heater_usage": {
+        "name": "Bottom Heater Usage"
+      },
+      "rear_heater_usage": {
+        "name": "Rear Heater Usage"
+      },
+      "boiler_power": {
+        "name": "Boiler Power"
+      },
+      "boiler_usage": {
+        "name": "Boiler Usage"
+      },
+      "evaporator_power": {
+        "name": "Evaporator Power"
+      },
+      "evaporator_usage": {
+        "name": "Evaporator Usage"
+      }
+    },
+    "binary_sensor": {
+      "door_status": {
+        "name": "Door Status"
+      },
+      "cavity_light": {
+        "name": "Cavity Light"
+      },
+      "camera_status": {
+        "name": "Camera Status"
+      },
+      "water_tank_empty": {
+        "name": "Water Tank Empty"
+      },
+      "water_tank_low": {
+        "name": "Water Tank Low"
+      },
+      "water_tank_removed": {
+        "name": "Water Tank Removed"
+      },
+      "waste_water_tank_full": {
+        "name": "Waste Water Tank Full"
+      },
+      "waste_water_tank_removed": {
+        "name": "Waste Water Tank Removed"
+      },
+      "descale_required": {
+        "name": "Descale Required"
+      },
+      "low_water": {
+        "name": "Low Water"
+      },
+      "water_leak": {
+        "name": "Water Leak"
+      },
+      "high_temperature": {
+        "name": "High Temperature"
+      },
+      "motor_stuck": {
+        "name": "Motor Stuck"
+      }
+    },
+    "button": {
+      "descale": {
+        "name": "Descale"
+      }
+    },
+    "water_heater": {
+      "cooker": {}
+    },
+    "camera": {
+      "camera": {
+        "name": "Camera"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_setting": {
+      "message": "{error}"
+    },
+    "command_failed": {
+      "message": "The Anova device didn't accept the command: {error}"
+    },
+    "recipe_not_found": {
+      "message": "No saved recipe has that name or id."
+    },
+    "oven_not_found": {
+      "message": "No connected Anova oven has that id."
+    },
+    "entity_not_found": {
+      "message": "That entity doesn't exist."
+    },
+    "auth_failed": {
+      "message": "Anova no longer accepts the sign-in; sign in again."
+    },
+    "cannot_connect": {
+      "message": "Couldn't connect to Anova."
+    }
+  },
+  "services": {
+    "play_recipe": {
+      "name": "Play recipe",
+      "description": "Play a saved recipe on one or more ovens.",
+      "fields": {
+        "device_id": {
+          "name": "Oven IDs",
+          "description": "The Anova IDs of the ovens to play it on."
+        },
+        "recipe_id": {
+          "name": "Recipe ID",
+          "description": "The ID of the saved recipe to play."
+        }
+      }
+    },
+    "save_recipe": {
+      "name": "Save recipe",
+      "description": "Save a multi-stage oven recipe, replacing one with the same name.",
+      "fields": {
+        "name": {
+          "name": "Recipe name",
+          "description": "The name of the recipe."
+        },
+        "stages": {
+          "name": "Stages",
+          "description": "The recipe's stages, as the recipe editor saves them."
+        }
+      }
+    },
+    "delete_recipe": {
+      "name": "Delete recipe",
+      "description": "Delete a saved recipe by name.",
+      "fields": {
+        "name": {
+          "name": "Recipe name",
+          "description": "The name of the recipe to delete."
+        }
+      }
+    },
+    "adjust_timer": {
+      "name": "Adjust timer",
+      "description": "Add minutes to (or subtract them from) an oven's timer.",
+      "fields": {
+        "entity_id": {
+          "name": "Timer",
+          "description": "The oven's Timer number entity."
+        },
+        "amount": {
+          "name": "Minutes",
+          "description": "Minutes to add (positive) or subtract (negative)."
+        }
+      }
     }
   }
 }

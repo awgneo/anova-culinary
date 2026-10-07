@@ -1,232 +1,122 @@
-"""Select platform for Anova APO recipes."""
+"""Select platform for Anova Precision Ovens: the running stage's elements, fan and timer start.
 
-from typing import Any
-from homeassistant.components.select import SelectEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.device_registry import DeviceInfo
+The options keep the labels they've always had, so dashboards and automations reading them
+keep working.
+"""
 
-from .const import DOMAIN, MANUFACTURER
-from .anova_api.client import AnovaClient
-from .anova_api.device import AnovaDevice
-from .anova_api.product import AnovaProduct
-from .anova_api.apo.models import AnovaPOHeatingElement, AnovaPOFanSpeed, AnovaPOTimerTrigger
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from enum import Enum
 
-import hashlib
-import uuid
+from homeassistant.components.select import SelectEntity, SelectEntityDescription
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+from . import AnovaConfigEntry
+from .anova_api import AnovaDevice, AnovaPODevice
+from .anova_api.apo import AnovaPOFanSpeed, AnovaPOHeatingElement, AnovaPOTimer, AnovaPOTimerTrigger
+from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities, is_cooking
+
+PARALLEL_UPDATES = 0
+
+HEATING_ELEMENTS = {
+    AnovaPOHeatingElement.TOP: "Top",
+    AnovaPOHeatingElement.REAR: "Rear",
+    AnovaPOHeatingElement.BOTTOM: "Bottom",
+    AnovaPOHeatingElement.TOP_REAR: "Top + Rear",
+    AnovaPOHeatingElement.BOTTOM_REAR: "Bottom + Rear",
+    AnovaPOHeatingElement.TOP_BOTTOM: "Top + Bottom",
+}
+FANS = {
+    AnovaPOFanSpeed.OFF: "Off",
+    AnovaPOFanSpeed.LOW: "Low",
+    AnovaPOFanSpeed.MEDIUM: "Medium",
+    AnovaPOFanSpeed.HIGH: "High",
+}
+TIMER_STARTS = {
+    AnovaPOTimerTrigger.IMMEDIATELY: "Immediately",
+    AnovaPOTimerTrigger.PREHEATED: "When Preheated",
+    AnovaPOTimerTrigger.FOOD_DETECTED: "Food Detected",
+    AnovaPOTimerTrigger.MANUALLY: "Manually",
+}
+
+
+@dataclass(frozen=True, kw_only=True)
+class AnovaSelectEntityDescription(AnovaEntityDescription, SelectEntityDescription):
+    """A select: its labelled values, the current one, and the oven call that sets it."""
+
+    labels: dict[Enum, str]
+    value_fn: Callable[[AnovaPODevice], Enum]
+    set_fn: Callable[[AnovaPODevice, Enum], Awaitable[None]]
+
+
+def _timer_start(oven: AnovaPODevice) -> AnovaPOTimerTrigger:
+    """When the running stage's timer starts (manually without one, as the editor defaults)."""
+    advance = oven.current_stage.advance
+    return advance.trigger if isinstance(advance, AnovaPOTimer) else AnovaPOTimerTrigger.MANUALLY
+
+
+SELECTS: tuple[AnovaSelectEntityDescription, ...] = (
+    AnovaSelectEntityDescription(
+        key="heating_element",
+        translation_key="heating_element",
+        labels=HEATING_ELEMENTS,
+        available_fn=is_cooking,
+        value_fn=lambda oven: oven.current_stage.heating_elements,
+        set_fn=lambda oven, value: oven.set_heating_elements(value),
+    ),
+    AnovaSelectEntityDescription(
+        key="fan",
+        translation_key="fan",
+        labels=FANS,
+        available_fn=is_cooking,
+        value_fn=lambda oven: oven.current_stage.fan,
+        set_fn=lambda oven, value: oven.set_fan(value),
+    ),
+    AnovaSelectEntityDescription(
+        key="timer_starts",
+        translation_key="timer_starts",
+        labels=TIMER_STARTS,
+        available_fn=is_cooking,
+        value_fn=_timer_start,
+        set_fn=lambda oven, value: oven.set_timer_trigger(value),
+    ),
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: AnovaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Anova select platform."""
-    client: AnovaClient = hass.data[DOMAIN][entry.entry_id]["client"]
-    recipes = hass.data[DOMAIN][entry.entry_id]["recipes"]
-    
-    entities = []
-    for device_id, device in client.devices.items():
-        if device.product == AnovaProduct.APO:
-            entities.extend([
-                AnovaHeatingElementSelect(client, device),
-                AnovaFanSelect(client, device),
-                AnovaTimerStartsSelect(client, device),
-            ])
-            
-    async_add_entities(entities)
 
-class AnovaHeatingElementSelect(SelectEntity):
-    """Heating element selector."""
+    def entities_for(device: AnovaDevice) -> list[SelectEntity]:
+        if not isinstance(device, AnovaPODevice):
+            return []
+        return [AnovaSelect(device, description) for description in SELECTS]
 
-    _attr_has_entity_name = True
-    _attr_name = "Heating Element"
-    _attr_icon = "mdi:heating-coil"
-    _attr_options = ["Top", "Rear", "Bottom", "Top + Rear", "Bottom + Rear", "Top + Bottom"]
+    async_setup_device_entities(hass, entry, async_add_entities, entities_for)
 
-    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
-        self._client = client
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_heating_element"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=MANUFACTURER,
-            model=self._device.model,
-        )
-        self._attr_current_option = "Rear"
-        self._remove_cb = None
 
-    async def async_added_to_hass(self) -> None:
-        self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device.id)
+class AnovaSelect(AnovaEntity[AnovaPODevice], SelectEntity):
+    """A setting of the oven's running stage."""
 
-    async def async_will_remove_from_hass(self) -> None:
-        if self._remove_cb:
-            self._remove_cb()
+    entity_description: AnovaSelectEntityDescription
 
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        if device_id != self._device.id: return
-        state = self._client.get_apo_state(device_id)
-        if not state or not state.cook: return
-        
-        self._attr_available = state.is_running
-        
-        try:
-            curr_stage = state.cook.current_stage
-            if curr_stage:
-                h = curr_stage.heating_elements
-                if h == AnovaPOHeatingElement.TOP_BOTTOM: self._attr_current_option = "Top + Bottom"
-                elif h == AnovaPOHeatingElement.TOP_REAR: self._attr_current_option = "Top + Rear"
-                elif h == AnovaPOHeatingElement.BOTTOM_REAR: self._attr_current_option = "Bottom + Rear"
-                elif h == AnovaPOHeatingElement.BOTTOM: self._attr_current_option = "Bottom"
-                elif h == AnovaPOHeatingElement.TOP: self._attr_current_option = "Top"
-                else: self._attr_current_option = "Rear"
-        except: pass
-        self.async_write_ha_state()
+    def __init__(self, device: AnovaPODevice, description: AnovaSelectEntityDescription) -> None:
+        """Initialize the select."""
+        super().__init__(device, description)
+        self._attr_options = list(description.labels.values())
+
+    @property
+    def current_option(self) -> str | None:
+        """The current label (unknown while it doesn't apply)."""
+        if not self.available:
+            return None
+        return self.entity_description.labels[self.entity_description.value_fn(self.device)]
 
     async def async_select_option(self, option: str) -> None:
-        cook = self._client.get_current_cook(self._device.id)
-        if not cook or not cook.current_stage: return
-        
-        h = AnovaPOHeatingElement.REAR
-        if option == "Top + Bottom": h = AnovaPOHeatingElement.TOP_BOTTOM
-        elif option == "Top + Rear": h = AnovaPOHeatingElement.TOP_REAR
-        elif option == "Bottom + Rear": h = AnovaPOHeatingElement.BOTTOM_REAR
-        elif option == "Bottom": h = AnovaPOHeatingElement.BOTTOM
-        elif option == "Top": h = AnovaPOHeatingElement.TOP
-
-        cook.current_stage.heating_elements = h
-        await self._client.play_cook(self._device.id, cook)
-
-class AnovaFanSelect(SelectEntity):
-    """Fan speed selector."""
-
-    _attr_has_entity_name = True
-    _attr_name = "Fan"
-    _attr_icon = "mdi:fan"
-    _attr_options = ["Off", "Low", "Medium", "High"]
-
-    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
-        self._client = client
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_fan"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=MANUFACTURER,
-            model=self._device.model,
-        )
-        self._attr_current_option = "High"
-        self._remove_cb = None
-
-    async def async_added_to_hass(self) -> None:
-        self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device.id)
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._remove_cb:
-            self._remove_cb()
-
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        if device_id != self._device.id: return
-        state = self._client.get_apo_state(device_id)
-        if not state or not state.cook: return
-        self._attr_available = state.is_running
-        
-        try:
-            curr_stage = state.cook.current_stage
-            if curr_stage:
-                f = curr_stage.fan
-                if f == AnovaPOFanSpeed.OFF: self._attr_current_option = "Off"
-                elif f == AnovaPOFanSpeed.LOW: self._attr_current_option = "Low"
-                elif f == AnovaPOFanSpeed.MEDIUM: self._attr_current_option = "Medium"
-                else: self._attr_current_option = "High"
-        except: pass
-        self.async_write_ha_state()
-
-    async def async_select_option(self, option: str) -> None:
-        cook = self._client.get_current_cook(self._device.id)
-        if not cook or not cook.current_stage: return
-        
-        f = AnovaPOFanSpeed.HIGH
-        if option == "Off": f = AnovaPOFanSpeed.OFF
-        elif option == "Low": f = AnovaPOFanSpeed.LOW
-        elif option == "Medium": f = AnovaPOFanSpeed.MEDIUM
-        
-        cook.current_stage.fan = f
-        await self._client.play_cook(self._device.id, cook)
-
-
-class AnovaTimerStartsSelect(SelectEntity):
-    """Timer Trigger logic selector."""
-
-    _attr_has_entity_name = True
-    _attr_name = "Timer Starts"
-    _attr_icon = "mdi:timer-cog-outline"
-    _attr_options = ["Immediately", "When Preheated", "Food Detected", "Manually"]
-
-    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
-        self._client = client
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}_timer_starts"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=self._device.name,
-            manufacturer=MANUFACTURER,
-            model=self._device.model,
-        )
-        self._attr_current_option = "Manually"
-        self._remove_cb = None
-
-    async def async_added_to_hass(self) -> None:
-        self._remove_cb = self._client.register_callback(self._handle_update)
-        self._handle_update(self._device.id)
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._remove_cb:
-            self._remove_cb()
-
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        if device_id != self._device.id: return
-        state = self._client.get_apo_state(device_id)
-        if not state or not state.cook: return
-        self._attr_available = state.is_running
-        
-        from .anova_api.apo.models import AnovaPOTimer
-        try:
-            curr_stage = state.cook.current_stage
-            if curr_stage:
-                if isinstance(curr_stage.advance, AnovaPOTimer):
-                    t = curr_stage.advance.trigger
-                    if t == AnovaPOTimerTrigger.IMMEDIATELY: self._attr_current_option = "Immediately"
-                    elif t == AnovaPOTimerTrigger.PREHEATED: self._attr_current_option = "When Preheated"
-                    elif t == AnovaPOTimerTrigger.FOOD_DETECTED: self._attr_current_option = "Food Detected"
-                    else: self._attr_current_option = "Manually"
-                else:
-                    self._attr_current_option = "Manually"
-        except: pass
-        self.async_write_ha_state()
-
-    async def async_select_option(self, option: str) -> None:
-        cook = self._client.get_current_cook(self._device.id)
-        if not cook or not cook.current_stage: return
-        
-        from .anova_api.apo.models import AnovaPOTimer
-        
-        t = AnovaPOTimerTrigger.MANUALLY
-        if option == "Immediately": t = AnovaPOTimerTrigger.IMMEDIATELY
-        elif option == "When Preheated": t = AnovaPOTimerTrigger.PREHEATED
-        elif option == "Food Detected": t = AnovaPOTimerTrigger.FOOD_DETECTED
-        
-        if not isinstance(cook.current_stage.advance, AnovaPOTimer):
-            # Safe default fallback if timer was not enabled prior
-            cook.current_stage.advance = AnovaPOTimer(duration=0, trigger=t)
-        else:
-            cook.current_stage.advance.trigger = t
-            
-        await self._client.play_cook(self._device.id, cook)
+        """Set the value with this label."""
+        value = next(value for value, label in self.entity_description.labels.items() if label == option)
+        await self._call(self.entity_description.set_fn(self.device, value))

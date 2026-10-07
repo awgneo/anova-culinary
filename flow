@@ -24,13 +24,205 @@ anova-lint() {
   success "Lint passed"
 }
 
+# ------------------------------------------------------------------------------
+# APKs
+# ------------------------------------------------------------------------------
+
+# The Anova apps the protocol is read from, each with its Play signing certificate
+# (SHA-256): the Oven app (ovens) and the Anova app (precision cookers). Both are React
+# Native, so the protocol lives in their JS bundle (Hermes bytecode in current versions).
+ANOVA_APPS=(
+  "oven com.anovaculinary.anovaoven 3deed6fdc495a53ed1320b79174c577c1c777b9cbd18a2e7139edb8b77ed4b04"
+  "culinary com.anovaculinary.android c9ce2b31e8a332bc19c28e56de6894690601cc6e4a13cf8626bfa886e62209e7"
+)
+
+# Prints the SHA-256 digest of the certificate an APK is signed with, through the Android
+# SDK's apksigner (with Android Studio's or Homebrew's JDK when JAVA_HOME isn't set)
+anova-apk-certificate() {
+  local sdk="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+  local signer jdk
+  signer=$(ls -d "$sdk"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n 1)
+  [ -n "$signer" ] || abort "apksigner not found (install the Android SDK build-tools)" 2
+  if [ -z "${JAVA_HOME:-}" ]; then
+    for jdk in "/Applications/Android Studio.app/Contents/jbr/Contents/Home" /opt/homebrew/opt/openjdk; do
+      [ -x "$jdk/bin/java" ] && export JAVA_HOME="$jdk" && break
+    done
+  fi
+  "$signer" verify --print-certs "$1" 2>/dev/null | grep -m 1 "certificate SHA-256 digest" | awk '{print $NF}'
+}
+
+# Fetches one app's latest version from APKPure (through apkeep), checks it's signed with
+# Anova's certificate, and unpacks it into .apks/<name>/: the base APK (app.apk), jadx's
+# decompile (source/) and the JS bundle (bundle.js, decompiled from Hermes bytecode when
+# the app ships it so, as both currently do). APKPure has been caught repackaging apps: these are only read,
+# never installed, and the certificate check refuses anything not signed by Anova.
+anova-build-apk-one() {
+  local name="$1" package="$2" certificate="$3"
+  local dir=".apks/$name"
+  local version_file="$dir/version.txt"
+  local tmp="${TEMPORARY_DIRECTORY:-/tmp/flow}/apk-$name"
+
+  info "Checking for the latest $package..."
+  local latest
+  latest=$(apkeep -d apk-pure -a "$package" -l 2>/dev/null | grep '^|' | tr -d '| ' | tr ',' '\n' | sort -V | tail -n 1)
+  if [ -z "$latest" ]; then
+    warning "Could not list $package's versions; keeping .apks/$name as is."
+    return 0
+  fi
+
+  local current=""
+  [ -f "$version_file" ] && current=$(cat "$version_file")
+  if [ "$latest" = "$current" ] && [ -f "$dir/bundle.js" ]; then
+    info "$package is up to date ($current)."
+    return 0
+  fi
+
+  info "Downloading $package $latest..."
+  rm -rf "$tmp" && mkdir -p "$tmp"
+  apkeep -d apk-pure -o acknowledge_dangers=true -a "$package@$latest" "$tmp" || abort "Failed to download $package $latest." 2
+  local download
+  download=$(ls "$tmp"/*.xapk "$tmp"/*.apk 2>/dev/null | head -n 1)
+  [ -n "$download" ] || abort "apkeep produced no file for $package." 2
+
+  # An XAPK bundles the base APK with its configuration splits
+  local apk="$tmp/$package.apk"
+  if [[ "$download" == *.xapk ]]; then
+    unzip -oq "$download" -d "$tmp/xapk" || abort "Failed to unpack $download." 2
+    cp "$tmp/xapk/$package.apk" "$apk" || abort "No base APK in $download." 2
+  else
+    mv "$download" "$apk"
+  fi
+
+  local signed
+  signed=$(anova-apk-certificate "$apk") || return $?
+  [ "$signed" = "$certificate" ] || abort "$package $latest is not signed by Anova (certificate ${signed:-unreadable}); refusing it." 2
+
+  info "Decompiling $package $latest..."
+  rm -rf "$dir" && mkdir -p "$dir"
+  mv "$apk" "$dir/app.apk"
+  # jadx exits non-zero on minor obfuscation errors; the sources directory is what counts
+  jadx -q -d "$dir/source" "$dir/app.apk"
+  [ -d "$dir/source/sources" ] || abort "Failed to decompile $package (no sources directory)." 2
+
+  unzip -p "$dir/app.apk" assets/index.android.bundle > "$tmp/index.android.bundle" || abort "No JS bundle in $package." 2
+  if [ "$(head -c 4 "$tmp/index.android.bundle" | xxd -p)" = "c61fbc03" ]; then
+    uvx --from hermes-dec hbc-decompiler "$tmp/index.android.bundle" "$dir/bundle.js" >/dev/null ||
+      abort "Failed to decompile $package's Hermes bundle." 2
+  else
+    mv "$tmp/index.android.bundle" "$dir/bundle.js"
+  fi
+
+  echo "$latest" > "$version_file"
+  rm -rf "$tmp"
+  success "Unpacked $package $latest into $dir."
+}
+
+# Fetches and unpacks the latest Anova apps into .apks/ (when they changed)
+anova-build-apk() {
+  mkdir -p .apks
+  local app
+  for app in "${ANOVA_APPS[@]}"; do
+    # shellcheck disable=SC2086
+    anova-build-apk-one $app || return $?
+  done
+}
+
+# ------------------------------------------------------------------------------
+# Sources
+# ------------------------------------------------------------------------------
+
+# Clones Home Assistant core's latest release into .sources/home-assistant (when it changed):
+# the developer docs trail the code, so the source is the reference
+anova-build-sources() {
+  local dir=".sources/home-assistant"
+  info "Checking for the latest Home Assistant release..."
+  local latest
+  latest=$(curl --connect-timeout 5 --max-time 15 -s https://api.github.com/repos/home-assistant/core/releases/latest | jq -r '.tag_name // empty')
+  if [ -z "$latest" ]; then
+    warning "Could not fetch the latest Home Assistant release; keeping $dir as is."
+    return 0
+  fi
+  local current=""
+  [ -d "$dir/.git" ] && current=$(git -C "$dir" describe --tags --exact-match 2>/dev/null)
+  if [ "$latest" = "$current" ]; then
+    info "Home Assistant sources are up to date ($current)."
+    return 0
+  fi
+  info "Cloning Home Assistant $latest..."
+  rm -rf "$dir" && mkdir -p .sources
+  git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$latest" https://github.com/home-assistant/core.git "$dir" ||
+    abort "Failed to clone Home Assistant $latest." 2
+  success "Cloned Home Assistant $latest into $dir."
+}
+
+# Builds everything, or one part: anova-build [apk|sources]
+anova-build() {
+  if [ -n "${1:-}" ]; then
+    declare -F "anova-build-$1" >/dev/null || abort "Unknown build part '$1' (apk|sources)" 2
+    "anova-build-$1"
+    return $?
+  fi
+  anova-build-apk && anova-build-sources || return $?
+  success "Build completed successfully."
+}
+
+# ------------------------------------------------------------------------------
+# Docs
+# ------------------------------------------------------------------------------
+
+# Builds .docs/HOMEASSISTANT.md from the Home Assistant developer guide's own Markdown
+# (developers.home-assistant.io's repository: crawling the site flattens its code blocks),
+# one page per file under docs/, each headed by its title
+anova-doc-homeassistant() {
+  info "Documenting the Home Assistant developer guide to .docs/HOMEASSISTANT.md..."
+  local tmp_dir="${TEMPORARY_DIRECTORY:-/tmp/flow}/homeassistant-docs"
+  rm -rf "$tmp_dir" && mkdir -p .docs "$(dirname "$tmp_dir")"
+  git clone --quiet --depth 1 https://github.com/home-assistant/developers.home-assistant.git "$tmp_dir" ||
+    abort "Failed to clone the Home Assistant developer guide." 2
+  local out=".docs/HOMEASSISTANT.md" file title
+  : > "$out"
+  while IFS= read -r file; do
+    # The front matter's title (quoted or not) heads the page; the rest is copied as is
+    title=$(awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } /^title:/ { sub(/^title:[ ]*/, ""); gsub(/^["\x27]|["\x27]$/, ""); print; exit }' "$file")
+    {
+      echo "# ${title:-${file#"$tmp_dir/docs/"}}"
+      echo
+      echo "_Source: ${file#"$tmp_dir/"}_"
+      echo
+      awk 'NR == 1 && $0 == "---" { front = 1; next } front && $0 == "---" { front = 0; next } !front' "$file"
+      echo
+    } >> "$out"
+  done < <(find "$tmp_dir/docs" -type f \( -name '*.md' -o -name '*.mdx' \) | sort)
+  rm -rf "$tmp_dir"
+  success "Wrote $(grep -c '^_Source: ' "$out") pages to $out."
+}
+
+# Crawls every guide, or one: anova-doc [homeassistant]
+anova-doc() {
+  if [ -n "${1:-}" ]; then
+    declare -F "anova-doc-$1" >/dev/null || abort "Unknown guide '$1' (homeassistant)" 2
+    "anova-doc-$1"
+    return $?
+  fi
+  anova-doc-homeassistant || return $?
+  success "Documentation completed successfully."
+}
+
+# ------------------------------------------------------------------------------
+# Registration
+# ------------------------------------------------------------------------------
+
 anova-usage() {
   echo "lint|Lint the integration and its tests (ruff)"
+  echo "build [apk|sources]|Fetch and unpack the latest Anova apps into .apks/ and Home Assistant's source into .sources/, or one of them"
+  echo "doc [homeassistant]|Crawl the Home Assistant developer guide into .docs/"
 }
 
 anova-flow() {
   case "$1" in
     lint) anova-lint; return $? ;;
+    build) anova-build "${@:2}"; return $? ;;
+    doc) anova-doc "${@:2}"; return $? ;;
     *) return 127 ;;
   esac
 }

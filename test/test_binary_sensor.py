@@ -1,33 +1,28 @@
-"""Tests for the Anova Binary Sensors."""
+"""Tests for the binary sensors."""
 
-import pytest
-from homeassistant.const import STATE_ON, STATE_OFF
-from custom_components.anova_culinary.const import DOMAIN
+from homeassistant.const import STATE_OFF, STATE_ON
 
-@pytest.mark.asyncio
-async def test_binary_sensor_states(hass, init_integration):
-    """Test boolean door, lamp, and camera bounds."""
-    client = hass.data[DOMAIN][init_integration.entry_id]["client"]
-    
-    state = client.devices["APO-456"].state
-    state.nodes.door_closed = False
-    state.nodes.door_lamp_on = True
-    state.nodes.cavity_lamp_on = False
-    state.nodes.cavity_camera_is_empty = False
-    
-    for cb in client._callbacks:
-        cb("APO-456")
+
+async def test_oven(hass, client, sent) -> None:
+    """Door, lights, camera and tanks."""
+    oven = client.devices["oven-1"]
+    oven.state.nodes.door.closed = False
+    oven.state.nodes.cavity_camera.is_empty = False
+    oven.state.nodes.water_tank.low = True
+    oven.notify()
     await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.test_oven_door_status").state == STATE_ON
+    assert hass.states.get("binary_sensor.test_oven_cavity_light").state == STATE_OFF
+    assert hass.states.get("binary_sensor.test_oven_camera_status").state == STATE_ON
+    assert hass.states.get("binary_sensor.test_oven_water_tank_low").state == STATE_ON
+    assert hass.states.get("binary_sensor.test_oven_descale_required").state == STATE_OFF
 
-    # Assert state parses logic exactly
-    state = hass.states.get("binary_sensor.test_oven_door_status")
-    assert state.state == STATE_ON
-    
-    state = hass.states.get("switch.test_oven_door_light")
-    assert state.state == STATE_ON
-    
-    state = hass.states.get("binary_sensor.test_oven_cavity_light")
-    assert state.state == STATE_OFF
-    
-    state = hass.states.get("binary_sensor.test_oven_camera_status")
-    assert state.state == STATE_ON
+
+async def test_cooker(hass, client, sent) -> None:
+    """Cooker alarms follow its mode."""
+    assert hass.states.get("binary_sensor.test_cooker_water_leak").state == STATE_OFF
+    cooker = client.devices["cooker-1"]
+    cooker.state.status.mode = "waterLeak"
+    cooker.notify()
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.test_cooker_water_leak").state == STATE_ON

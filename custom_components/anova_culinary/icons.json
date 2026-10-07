@@ -1,0 +1,157 @@
+{
+  "entity": {
+    "climate": {
+      "oven": {
+        "default": "mdi:toaster-oven"
+      },
+      "probe": {
+        "default": "mdi:thermometer-probe"
+      }
+    },
+    "switch": {
+      "sous_vide": {
+        "default": "mdi:water-circle"
+      },
+      "steam_switch": {
+        "default": "mdi:water-sync"
+      },
+      "door_light": {
+        "default": "mdi:lightbulb-off",
+        "state": {
+          "on": "mdi:lightbulb-on"
+        }
+      }
+    },
+    "number": {
+      "steam": {
+        "default": "mdi:water-percent"
+      },
+      "timer": {
+        "default": "mdi:timer-outline"
+      }
+    },
+    "select": {
+      "heating_element": {
+        "default": "mdi:heating-coil"
+      },
+      "fan": {
+        "default": "mdi:fan"
+      },
+      "timer_starts": {
+        "default": "mdi:timer-cog-outline"
+      }
+    },
+    "sensor": {
+      "timer_remaining": {
+        "default": "mdi:timer-outline"
+      },
+      "timer_elapsed": {
+        "default": "mdi:timer-sand-complete"
+      },
+      "recipe": {
+        "default": "mdi:text-box-outline"
+      },
+      "rack_position": {
+        "default": "mdi:tray"
+      },
+      "top_heater_power": {
+        "default": "mdi:heating-coil"
+      },
+      "bottom_heater_power": {
+        "default": "mdi:heating-coil"
+      },
+      "rear_heater_power": {
+        "default": "mdi:heating-coil"
+      },
+      "top_heater_usage": {
+        "default": "mdi:counter"
+      },
+      "bottom_heater_usage": {
+        "default": "mdi:counter"
+      },
+      "rear_heater_usage": {
+        "default": "mdi:counter"
+      },
+      "boiler_power": {
+        "default": "mdi:kettle-steam"
+      },
+      "boiler_usage": {
+        "default": "mdi:counter"
+      },
+      "evaporator_power": {
+        "default": "mdi:weather-fog"
+      },
+      "evaporator_usage": {
+        "default": "mdi:counter"
+      }
+    },
+    "binary_sensor": {
+      "door_status": {
+        "default": "mdi:door-closed",
+        "state": {
+          "on": "mdi:door-open"
+        }
+      },
+      "cavity_light": {
+        "default": "mdi:lightbulb"
+      },
+      "camera_status": {
+        "default": "mdi:cctv"
+      },
+      "water_tank_empty": {
+        "default": "mdi:water"
+      },
+      "water_tank_low": {
+        "default": "mdi:water-minus"
+      },
+      "water_tank_removed": {
+        "default": "mdi:water-off"
+      },
+      "waste_water_tank_full": {
+        "default": "mdi:delete-variant"
+      },
+      "waste_water_tank_removed": {
+        "default": "mdi:delete-off"
+      },
+      "descale_required": {
+        "default": "mdi:kettle-alert"
+      },
+      "low_water": {
+        "default": "mdi:water-minus"
+      },
+      "water_leak": {
+        "default": "mdi:water-alert"
+      },
+      "high_temperature": {
+        "default": "mdi:thermometer-alert"
+      },
+      "motor_stuck": {
+        "default": "mdi:engine-off"
+      }
+    },
+    "button": {
+      "descale": {
+        "default": "mdi:kettle-steam"
+      }
+    },
+    "camera": {
+      "camera": {
+        "default": "mdi:cctv"
+      }
+    }
+  },
+  "services": {
+    "play_recipe": {
+      "service": "mdi:play"
+    },
+    "save_recipe": {
+      "service": "mdi:content-save"
+    },
+    "delete_recipe": {
+      "service": "mdi:delete"
+    },
+    "adjust_timer": {
+      "service": "mdi:timer-plus-outline"
+    }
+  }
+}

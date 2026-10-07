@@ -1,125 +1,77 @@
 """Water heater platform for Anova Precision Cookers."""
 
 from typing import Any
+
 from homeassistant.components.water_heater import (
+    STATE_ECO,
+    STATE_ELECTRIC,
     WaterHeaterEntity,
     WaterHeaterEntityFeature,
 )
+from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-STATE_ECO = "eco"
-STATE_ELECTRIC = "electric"
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.device_registry import DeviceInfo
+from . import AnovaConfigEntry
+from .anova_api import AnovaDevice, AnovaPCDevice, AnovaPCTemperatureUnit
+from .anova_api.apc.limits import TEMPERATURE_RANGE
+from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities
 
-from .const import DOMAIN, MANUFACTURER
-from .anova_api.client import AnovaClient
-from .anova_api.device import AnovaDevice
-from .anova_api.product import AnovaProduct
-from .anova_api.apc.models import AnovaPCTemperatureUnit, AnovaPCCook
+PARALLEL_UPDATES = 0
+
+# The target to start at before one is set
+DEFAULT_TARGET = 60.0
+
+COOKER = AnovaEntityDescription(key="", name=None, translation_key="cooker")
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: AnovaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Anova water heater platform."""
-    client: AnovaClient = hass.data[DOMAIN][entry.entry_id]["client"]
-    
-    entities = []
-    for device_id, device in client.devices.items():
-        if device.product == AnovaProduct.APC:
-            entities.append(AnovaCooker(client, device))
-            
-    async_add_entities(entities)
+
+    def entities_for(device: AnovaDevice) -> list[WaterHeaterEntity]:
+        return [AnovaCooker(device, COOKER)] if isinstance(device, AnovaPCDevice) else []
+
+    async_setup_device_entities(hass, entry, async_add_entities, entities_for)
 
 
-class AnovaCooker(WaterHeaterEntity):
-    """Representation of an Anova Precision Cooker."""
+class AnovaCooker(AnovaEntity[AnovaPCDevice], WaterHeaterEntity):
+    """Representation of an Anova Precision Cooker: electric while cooking, eco while idle."""
 
-    _attr_has_entity_name = True
-    _attr_name = None  # Using device name
-    _attr_supported_features = (
-        WaterHeaterEntityFeature.TARGET_TEMPERATURE
-        | WaterHeaterEntityFeature.OPERATION_MODE
-    )
-    _attr_operation_list = [STATE_ELECTRIC, STATE_ECO]  # Eco = Idle/stopped, Electric = Cooking
+    _attr_supported_features = WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
+    _attr_operation_list = [STATE_ELECTRIC, STATE_ECO]
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_min_temp, _attr_max_temp = TEMPERATURE_RANGE[AnovaPCTemperatureUnit.C]
 
-    def __init__(self, client: AnovaClient, device: AnovaDevice) -> None:
-        """Initialize the water heater."""
-        self._client = client
-        self._device = device
-        self._attr_unique_id = f"{DOMAIN}_{self._device.id}"
-        
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device.id)},
-            name=device.name,
-            manufacturer=MANUFACTURER,
-            model=device.model,
-        )
-        self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        self._remove_cb = None
+    @property
+    def current_temperature(self) -> float | None:
+        """The water temperature."""
+        return self.device.temperature
 
-    async def async_added_to_hass(self) -> None:
-        """Register callbacks."""
-        self._remove_cb = self._client.register_callback(self._handle_update)
-        # Force initial state parsing if we missed it
-        self._handle_update(self._device.id)
+    @property
+    def target_temperature(self) -> float | None:
+        """The target."""
+        return self.device.target_temperature
 
-    async def async_will_remove_from_hass(self) -> None:
-        """Clean up."""
-        if self._remove_cb:
-            self._remove_cb()
-
-    @callback
-    def _handle_update(self, device_id: str) -> None:
-        """Handle updated data from the websocket."""
-        if device_id != self._device.id:
-            return
-            
-        state = self._client.get_apc_state(self._device.id)
-        if not state:
-            return
-
-        self._attr_current_temperature = state.current_temperature
-        self._attr_target_temperature = state.target_temperature
-        
-        if state.unit == AnovaPCTemperatureUnit.C:
-            self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-        else:
-            self._attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
-
-        if state.is_running:
-            self._attr_current_operation = STATE_ELECTRIC
-        else:
-            self._attr_current_operation = STATE_ECO
-
-        self.async_write_ha_state()
+    @property
+    def current_operation(self) -> str:
+        """Electric while cooking."""
+        return STATE_ELECTRIC if self.device.is_cooking else STATE_ECO
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
-        temperature = kwargs.get("temperature")
-        if temperature is None:
-            return
-
-        api_unit = AnovaPCTemperatureUnit.C if self._attr_temperature_unit == UnitOfTemperature.CELSIUS else AnovaPCTemperatureUnit.F
-        cook = AnovaPCCook(
-            target_temperature=temperature,
-            temperature_unit=api_unit
-        )
-        await self._client.play_cook(self._device.id, cook)
+        """Change the running cook's target, or start a cook at it."""
+        temperature = kwargs[ATTR_TEMPERATURE]
+        if self.device.is_cooking:
+            await self._call(self.device.set_target_temperature(temperature, AnovaPCTemperatureUnit.C))
+        else:
+            await self._call(self.device.start(temperature, AnovaPCTemperatureUnit.C))
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
-        """Set operation mode."""
-        if operation_mode == STATE_ELECTRIC:
-            api_unit = AnovaPCTemperatureUnit.C if self._attr_temperature_unit == UnitOfTemperature.CELSIUS else AnovaPCTemperatureUnit.F
-            cook = AnovaPCCook(
-                target_temperature=self._attr_target_temperature or 60.0,
-                temperature_unit=api_unit
-            )
-            await self._client.play_cook(self._device.id, cook)
-        else:
-            await self._client.stop_cook(self._device.id)
+        """Start (electric) or stop (eco)."""
+        if operation_mode == STATE_ECO:
+            await self._call(self.device.stop())
+        elif not self.device.is_cooking:
+            await self._call(self.device.start(self.device.target_temperature or DEFAULT_TARGET, AnovaPCTemperatureUnit.C))

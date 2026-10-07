@@ -1,44 +1,28 @@
-# Anova API Engine Architecture
+# anova_api
 
-The core of the Anova API (`anova_api`) is driven by a powerful bidirectional Transpiler engine. Because Anova's internal API changes drastically across generations (e.g., `oven_v1` uses flat arrays while `oven_v2` uses deeply nested AST logical condition trees), the Transpiler decouples Home Assistant from the chaos of raw JSON payloads. 
+The protocol Anova's own apps speak, as a library: sign in, connect, follow each device's state, and control it. Home Assistant only reads device state and calls these functions. `PROTOCOL.md` is the reference, read from the apps (`.apks/`).
 
-The integration components (`climate.py`, `switch.py`, etc.) execute simple reads/writes against a pristine, statically-typed python object model (found in `models.py`). The Transpiler sits in between, catching raw web socket JSON from Anova, interpreting it into our python models, and subsequently transforming our python objects back into native Anova websocket strings.
+## Layers
 
-## The Transpiler Lifecycle
+| Module | Role |
+|---|---|
+| `auth.py` | Firebase sign-in and token refresh, with the Oven app's API key and Android headers |
+| `connection.py` | The WebSocket: the app's URL, subprotocol and headers; each command awaits its `RESPONSE`; a flat 5-second reconnect |
+| `client.py` | The account: device lists, devices added and removed, state routed to each device |
+| `device.py`, `models.py` | The base device (state, availability, listeners) and the typed models both products share |
+| `apo/` | Precision Oven 2.0 |
+| `apc/` | Third-generation Precision Cookers |
 
-The engine operates on four critical lifecycle boundaries located in `transpiler.py`:
+## The oven (`apo/`)
 
-### 1. `recipe_to_cook`
-**Role:** Intent Creation
-**Signature:** `(recipe: APORecipe) -> APOCook`
+- `state.py`: `AnovaPOState`, the oven's whole state typed after the app's `OvenStateV2` schema.
+- `commands.py`: one `build_*_command` per command the app sends, in its envelope.
+- `limits.py`: the app's validation rules (temperature ranges by element, mode and steam; when the fan must be high; steam mode by temperature).
+- `models.py`: the recipe format: `AnovaPORecipe` and `AnovaPOStage` (mode, temperature, steam, elements, fan, a timer or probe advance, transition, rack).
+- `recipe.py`: a port of the app's converter, `transformRawStagesToV2`, from the recipe format to the oven's stages and back. Recipes reach the oven exactly as the app would send them, and cooks started from the app read back into the recipe format.
+- `device.py`: `AnovaPODevice`. Starts cooks (`start_manual`, `start_recipe`), and changes the running stage with the app's own commands: `set_temperature`, `set_sous_vide`, `set_steam`, `set_fan`, `set_heating_elements`, `set_timer`, `set_probe`; `set_timer_trigger` resends the stages, as the app's editor does. Also the light, descaling, and the camera.
+- `stream.py`: the camera's live stream, played over WebRTC through its WHEP URL.
 
-Converts a static multi-stage recipe sequence (`APORecipe`) into a live, executing intent representation (`APOCook`). It securely clones the schema, generates unique UUIDs for untracked stages, and establishes an active stage pointer (index) to monitor where in the sequence the user currently is. This is typically invoked when starting a fresh cooking routine.
+## Trying it
 
----
-
-### 2. `cook_to_payload`
-**Role:** Command Transmission (Forward Transpiler)
-**Signature:** `(cook: APOCook, device_model: str) -> dict`
-
-Translates our pristine `APOCook` intent back into Anova's hyper-specific native JSON instruction block (`CMD_APO_START`).
-- **Critical Logic:** This only constructs the *recipe intent* (temperatures, fans, timers). We never transmit `nodes` values back to the oven because we cannot remotely instruct physical hardware limitations (like forcing the water tank to be "full"). 
-- It actively intercepts temperature constraint rules based on physical hardware model limitations (clamping high temps when the bottom element is forced). 
-
----
-
-### 3. `payload_to_state`
-**Role:** Telemetry Master (Reverse Transpiler)
-**Signature:** `(raw_payload: dict) -> APOState`
-
-The heavy lifter. Whenever the oven blasts a websocket update ping, this captures it and constructs the singular `APOState` object that serves as Home Assistant's unified truth. 
-- It maps wildly disparate hardware telemetry variables into a beautiful, fully flattened `APONodes` representation (capturing current probe temps, boiler watts, water tank flags, and even hidden camera telemetry).
-- After mapping physical hardware truth, it triggers `payload_cook_to_cook` internally to determine what the logic intent currently is.
-- It unites both models into one cohesive `APOState` proxy object.
-
----
-
-### 4. `payload_cook_to_cook`
-**Role:** Logic Parser 
-**Signature:** `(raw_payload: dict) -> APOCook`
-
-An internal helper dispatched natively by `payload_to_state`. It parses the messy, nested JSON recipe representations found in the telemetry stream and translates those logical boundaries back into our strict `APOCook` schema. It normalizes triggers, clamps sous-vide thresholds, and untangles condition chains back into typed Enums.
+`uv run python -m custom_components.anova_culinary.anova_api [seconds]` signs in, connects, and prints each device's state, read-only.
