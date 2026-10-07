@@ -104,9 +104,10 @@ async def test_waits_for_the_broadcast() -> None:
 async def test_gives_up_when_the_broadcast_never_starts() -> None:
     """A broadcast that doesn't start in time is an error."""
     client = StreamClient()
-    client.session = WhepSession(not_started=1000)
+    client.session = WhepSession(not_started=10**9)
     oven = AnovaPODevice(client, "oven-1", "oven_v2")
-    with patch.object(stream, "RETRY_DELAY", 0), patch.object(stream, "BROADCAST_WAIT", 0.01):
+    # No time to wait: the first refusal ends it, however fast the machine
+    with patch.object(stream, "RETRY_DELAY", 0.001), patch.object(stream, "BROADCAST_WAIT", 0):
         with pytest.raises(AnovaConnectionError, match="409"):
             await oven.live_stream.watch("a", "v=0 offer")
     assert client.commands == ["CMD_APO_START_LIVE_STREAM", "CMD_APO_STOP_LIVE_STREAM"]
