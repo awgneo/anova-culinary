@@ -23,6 +23,14 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 KEEP_ALIVE = 60
+# Like the app's WHEP client, an offer the stream refuses is posted again after a doubling
+# delay from 500 ms; one more attempt than the app's three, since our stream often starts
+# just as the viewer opens
+OFFER_ATTEMPTS = 4
+RETRY_DELAY = 0.5
+# After the last viewer leaves, the stream keeps running this long, so reopening the view
+# reuses it rather than restarting it
+STOP_DELAY = 30
 # The STUN server the app gives its WebRTC player
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
 
@@ -36,23 +44,40 @@ class AnovaPOLiveStream:
         self._session = session
         self._viewers: dict[str, str | None] = {}  # viewer -> WHEP resource URL
         self._keep_alive: asyncio.Task[None] | None = None
+        self._stopping: asyncio.Task[None] | None = None
 
     async def watch(self, viewer: str, offer_sdp: str) -> str:
         """Starts the stream if needed and returns the SDP answer for a viewer's offer."""
+        self._cancel_stop()
         url = await self._device.start_live_stream()
         try:
-            status, answer, resource = await self._offer(url, offer_sdp)
-            if status not in (200, 201):
-                raise AnovaConnectionError(f"The camera stream refused the viewer ({status}): {answer}")
+            answer, resource = await self._connect(url, offer_sdp)
         except AnovaConnectionError:
-            # Nobody ended up watching: stop the stream the oven started for this viewer
+            # Nobody ended up watching: stop the stream the oven started, after the grace period
             if not self._viewers:
-                await self._device.stop_live_stream()
+                self._schedule_stop()
             raise
         self._viewers[viewer] = resource
         if self._keep_alive is None:
             self._keep_alive = asyncio.create_task(self._keep_streaming())
         return answer
+
+    async def _connect(self, url: str, offer_sdp: str) -> tuple[str, str | None]:
+        """Posts a viewer's offer, retrying as the app does: the answer and the session's resource URL."""
+        error = AnovaConnectionError("The camera stream refused the viewer")
+        for attempt in range(OFFER_ATTEMPTS):
+            if attempt:
+                await asyncio.sleep(RETRY_DELAY * 2 ** (attempt - 1))
+            try:
+                status, answer, resource = await self._offer(url, offer_sdp)
+            except AnovaConnectionError as err:
+                error = err
+                continue
+            if status in (200, 201):
+                return answer, resource
+            error = AnovaConnectionError(f"The camera stream refused the viewer ({status}): {answer}")
+            _LOGGER.debug("The camera stream refused the viewer (%s), attempt %d of %d", status, attempt + 1, OFFER_ATTEMPTS)
+        raise error
 
     async def _offer(self, url: str, offer_sdp: str) -> tuple[int, str, str | None]:
         """Posts an SDP offer (WHEP): the status, the answer, and the session's resource URL."""
@@ -79,10 +104,32 @@ class AnovaPOLiveStream:
             except aiohttp.ClientError as err:
                 _LOGGER.debug("Couldn't end the camera session: %s", err)
         if not self._viewers:
-            if self._keep_alive is not None:
-                self._keep_alive.cancel()
-                self._keep_alive = None
+            self._schedule_stop()
+
+    def _schedule_stop(self) -> None:
+        """Stops the stream after STOP_DELAY, unless a viewer comes back."""
+        self._cancel_stop()
+        self._stopping = asyncio.create_task(self._stop_later())
+
+    def _cancel_stop(self) -> None:
+        """Keeps the stream: a viewer arrived during the grace period."""
+        if self._stopping is not None:
+            self._stopping.cancel()
+            self._stopping = None
+
+    async def _stop_later(self) -> None:
+        """Stops the stream once STOP_DELAY passes with nobody watching."""
+        await asyncio.sleep(STOP_DELAY)
+        self._stopping = None
+        if self._viewers:
+            return
+        if self._keep_alive is not None:
+            self._keep_alive.cancel()
+            self._keep_alive = None
+        try:
             await self._device.stop_live_stream()
+        except Exception as err:  # noqa: BLE001 - the stream ends on its own without keep-alives
+            _LOGGER.debug("Stopping the camera stream failed: %s", err)
 
     async def _keep_streaming(self) -> None:
         """Re-sends the start every KEEP_ALIVE seconds while anyone watches."""
