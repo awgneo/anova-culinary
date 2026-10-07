@@ -29,8 +29,6 @@ from .stream import AnovaPOLiveStream
 
 # How long a lamp change shows before the oven confirms it
 LAMP_PENDING = 3.0
-# Steam turned back on without a setting seen before
-DEFAULT_STEAM = 100
 
 
 class AnovaPODevice(AnovaDevice[AnovaPOState]):
@@ -44,13 +42,6 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         """Initialize."""
         super().__init__(*args, **kwargs)
         self._lamp_pending: tuple[bool, float] | None = None
-        self._last_steam = DEFAULT_STEAM
-
-    def update(self, state: dict[str, Any]) -> None:
-        """Takes a state event's state, remembering the last steam setting."""
-        super().update(state)
-        if (stage := self.current_stage) is not None and stage.steam > 0:
-            self._last_steam = stage.steam
 
     @cached_property
     def live_stream(self) -> AnovaPOLiveStream:
@@ -148,7 +139,8 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         )
 
     async def set_steam(self, setpoint: int) -> None:
-        """Changes the running stage's steam (0 turns it off). Steam runs the fan on high."""
+        """Changes the running stage's steam; 0 turns it off, as the app's steam control does.
+        Steam runs the fan on high."""
         stage = self._running_stage()
         limits.validate_steam(setpoint)
         stage.steam = setpoint
@@ -156,10 +148,6 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         await self._request(
             commands.build_set_steam_generators_command(self.id, limits.steam_mode(stage.celsius), setpoint)
         )
-
-    async def set_steam_enabled(self, on: bool) -> None:
-        """Turns the running stage's steam off, or back on at its last setting."""
-        await self.set_steam(self._last_steam if on else 0)
 
     async def set_fan(self, fan: AnovaPOFanSpeed) -> None:
         """Changes the running stage's fan, within what its other settings allow."""

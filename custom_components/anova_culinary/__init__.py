@@ -56,10 +56,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnovaConfigEntry) -> boo
     except AnovaConnectionError as err:
         raise ConfigEntryNotReady(translation_domain=DOMAIN, translation_key="cannot_connect") from err
 
-    # Entries made before the account's id became their unique id
-    if entry.unique_id is None and client.user_id:
-        hass.config_entries.async_update_entry(entry, unique_id=client.user_id)
-
     entry.runtime_data = client
     entry.async_on_unload(client.register_auth_error_callback(lambda _: entry.async_start_reauth(hass)))
     entry.async_on_unload(client.register_device_callback(_device_removed(hass, entry)))

@@ -1,8 +1,4 @@
-"""Select platform for Anova Precision Ovens: the running stage's elements, fan and timer start.
-
-The options keep the labels they've always had, so dashboards and automations reading them
-keep working.
-"""
+"""Select platform for Anova Precision Ovens: the running stage's elements, fan and timer start."""
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass

@@ -32,13 +32,6 @@ SWITCHES: tuple[AnovaSwitchEntityDescription, ...] = (
         set_fn=lambda oven, on: oven.set_sous_vide(on),
     ),
     AnovaSwitchEntityDescription(
-        key="steam_switch",
-        translation_key="steam_switch",
-        available_fn=is_cooking,
-        is_on_fn=lambda oven: oven.current_stage.steam > 0,
-        set_fn=lambda oven, on: oven.set_steam_enabled(on),
-    ),
-    AnovaSwitchEntityDescription(
         key="door_light",
         translation_key="door_light",
         is_on_fn=lambda oven: oven.lamp_on,

@@ -1,4 +1,4 @@
-"""Tests for the oven selects: same option labels as ever, the app's commands behind them."""
+"""Tests for the oven selects: their labelled options, and the app's commands behind them."""
 
 import pytest
 from homeassistant.exceptions import ServiceValidationError

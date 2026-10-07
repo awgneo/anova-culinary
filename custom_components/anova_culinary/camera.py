@@ -45,6 +45,11 @@ class AnovaCamera(AnovaEntity[AnovaPODevice], Camera):
         AnovaEntity.__init__(self, device, description)
         Camera.__init__(self)
 
+    @property
+    def entity_picture(self) -> str | None:
+        """No still image, so the frontend shows the icon rather than a broken picture."""
+        return None
+
     async def async_camera_image(self, width: int | None = None, height: int | None = None) -> bytes | None:
         """The oven offers no still images."""
         return None

@@ -41,8 +41,8 @@ Each **oven** has:
 |---|---|
 | Oven (climate) | Off or heating; the cavity temperature and target. While off, setting a target only remembers it; turning on starts a cook at it. |
 | Probe (climate) | The probe's temperature and target. Available while cooking with the probe plugged in. |
-| Sous Vide, Steam Switch (switches) | Sous vide (wet bulb) on/off, and steam on/off for the running stage. |
-| Steam, Timer (numbers) | The running stage's steam (%) and timer (minutes). |
+| Sous Vide (switch) | Sous vide (wet bulb) on/off for the running stage. |
+| Steam, Timer (numbers) | The running stage's steam (%, 0 for none) and timer (minutes). |
 | Heating Element, Fan, Timer Starts (selects) | The running stage's elements, fan speed, and when its timer starts (immediately, when preheated, when food is detected, manually). |
 | Door Light (switch) | The oven light, at any time. |
 | Camera (camera) | The cavity camera's live feed, over WebRTC. |

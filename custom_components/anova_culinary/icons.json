@@ -12,9 +12,6 @@
       "sous_vide": {
         "default": "mdi:water-circle"
       },
-      "steam_switch": {
-        "default": "mdi:water-sync"
-      },
       "door_light": {
         "default": "mdi:lightbulb-off",
         "state": {

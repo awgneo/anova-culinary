@@ -9,13 +9,12 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.anova_culinary.anova_api import AnovaAuthError, AnovaClient, AnovaConnectionError, AnovaProduct
 from custom_components.anova_culinary.const import DOMAIN
 
-# The unique ids entities had before the rebuild: dashboards and automations rely on them
-LEGACY_UNIQUE_IDS = {
+# Unique ids: the domain, the device's Anova id, and the entity's key
+UNIQUE_IDS = {
     ("climate", "anova_culinary_oven-1"),
     ("climate", "anova_culinary_oven-1_probe"),
     ("switch", "anova_culinary_oven-1_sous_vide"),
     ("switch", "anova_culinary_oven-1_door_light"),
-    ("switch", "anova_culinary_oven-1_steam_switch"),
     ("number", "anova_culinary_oven-1_steam"),
     ("number", "anova_culinary_oven-1_timer"),
     ("select", "anova_culinary_oven-1_heating_element"),
@@ -32,11 +31,11 @@ LEGACY_UNIQUE_IDS = {
 }
 
 
-async def test_unique_ids_are_kept(hass, sent) -> None:
-    """Every entity the integration had keeps its unique id."""
+async def test_unique_ids(hass, sent) -> None:
+    """Entities are identified by device and key."""
     registry = er.async_get(hass)
     ids = {(entry.domain, entry.unique_id) for entry in registry.entities.values()}
-    assert LEGACY_UNIQUE_IDS <= ids
+    assert UNIQUE_IDS <= ids
 
 
 async def test_devices(hass, sent) -> None:
@@ -84,3 +83,4 @@ async def test_cannot_connect(hass, mock_config_entry) -> None:
     with patch.object(AnovaClient, "connect", side_effect=AnovaConnectionError("down")):
         await hass.config_entries.async_setup(mock_config_entry.entry_id)
     assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+
