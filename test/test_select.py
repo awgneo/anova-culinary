@@ -13,7 +13,9 @@ async def test_states(hass, sent) -> None:
     assert hass.states.get("select.test_oven_heating_element").state == "Rear"
     assert hass.states.get("select.test_oven_fan").state == "High"
     assert hass.states.get("select.test_oven_timer_starts").state == "Food Detected"
-    assert hass.states.get("select.test_oven_fan").attributes["options"] == ["Off", "Low", "Medium", "High"]
+    # Sous vide with steam allows only high; idle, every option is listed
+    assert hass.states.get("select.test_oven_fan").attributes["options"] == ["High"]
+    assert hass.states.get("select.idle_oven_fan").attributes["options"] == ["Off", "Low", "Medium", "High"]
 
 
 async def test_commands(hass, sent) -> None:

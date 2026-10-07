@@ -28,11 +28,21 @@ STEAM_PERCENTAGE_FROM = 100.0
 QUIET_ELEMENTS = (AnovaPOHeatingElement.TOP, AnovaPOHeatingElement.BOTTOM, AnovaPOHeatingElement.TOP_BOTTOM)
 
 
-def allowed_fans(sous_vide: bool, elements: AnovaPOHeatingElement, steam: int) -> list[AnovaPOFanSpeed]:
-    """The fan speeds a stage may use: only high with steam, sous vide or the rear element."""
+def allowed_fans(
+    sous_vide: bool, elements: AnovaPOHeatingElement, steam: int, celsius: float | None = None
+) -> list[AnovaPOFanSpeed]:
+    """The fan speeds a stage may use: only high with steam, sous vide or the rear element;
+    off with the bottom element alone only up to the proofing maximum (when `celsius` is known)."""
     if sous_vide or steam > 0 or elements not in QUIET_ELEMENTS:
         return [AnovaPOFanSpeed.HIGH]
+    if elements == AnovaPOHeatingElement.BOTTOM and celsius is not None and celsius > PROOFING_MAX:
+        return [fan for fan in AnovaPOFanSpeed if fan != AnovaPOFanSpeed.OFF]
     return list(AnovaPOFanSpeed)
+
+
+def stage_fans(stage: AnovaPOStage) -> list[AnovaPOFanSpeed]:
+    """The fan speeds a stage's other settings allow."""
+    return allowed_fans(stage.sous_vide, stage.heating_elements, stage.steam, stage.celsius)
 
 
 def temperature_range(
@@ -82,10 +92,15 @@ def validate_steam(steam: int) -> None:
 
 
 def normalize_stage(stage: AnovaPOStage) -> AnovaPOStage:
-    """The stage made valid as the app's editor would: fan raised to high where required,
-    and the target, steam, timer and probe clamped into range."""
-    fan = stage.fan if stage.fan in allowed_fans(stage.sous_vide, stage.heating_elements, stage.steam) else AnovaPOFanSpeed.HIGH
+    """The stage made valid, changing as little as it can: the fan raised where the settings
+    require it (to high, or from off to low above the proofing maximum, keeping the target),
+    then the target, steam, timer and probe clamped into range."""
     steam = min(max(stage.steam, 0), STEAM_MAX)
+    fans = allowed_fans(stage.sous_vide, stage.heating_elements, steam, stage.celsius)
+    if stage.fan in fans:
+        fan = stage.fan
+    else:
+        fan = AnovaPOFanSpeed.LOW if AnovaPOFanSpeed.LOW in fans else AnovaPOFanSpeed.HIGH
     low, high = temperature_range(stage.sous_vide, stage.heating_elements, steam, fan)
     celsius = min(max(stage.celsius, low), high)
     advance = stage.advance

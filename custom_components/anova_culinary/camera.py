@@ -15,11 +15,12 @@ from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 from . import AnovaConfigEntry
 from .anova_api import AnovaDevice, AnovaException, AnovaPODevice
 from .anova_api.apo.stream import STUN_SERVER
-from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities
+from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities, is_cooking
 
 PARALLEL_UPDATES = 0
 
-CAMERA = AnovaEntityDescription(key="camera", translation_key="camera")
+# The oven streams only while cooking
+CAMERA = AnovaEntityDescription(key="camera", translation_key="camera", available_fn=is_cooking)
 
 
 async def async_setup_entry(
@@ -36,7 +37,7 @@ async def async_setup_entry(
 
 
 class AnovaCamera(AnovaEntity[AnovaPODevice], Camera):
-    """The oven's cavity camera; it streams only, with no still images."""
+    """The oven's cavity camera; it streams only while cooking, with no still images."""
 
     _attr_supported_features = CameraEntityFeature.STREAM
 

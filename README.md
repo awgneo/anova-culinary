@@ -122,7 +122,7 @@ Anova's cloud pushes each device's state over a WebSocket as it changes; nothing
 ## Troubleshooting
 
 - **The integration asks to sign in again**: Anova no longer accepts the sign-in (often after a password change). Sign in with the same account.
-- **A control fails with "outside … for these settings"**: the oven's rules limit some combinations. Sous vide allows up to 92 °C (98 °C with steam); the bottom element alone allows up to 230 °C, or 45 °C with the fan off; steam, sous vide and the rear element run the fan on high.
+- **A setting changed something else**: the oven's rules limit some combinations, and the integration fits the stage around your change rather than refusing it. Steam, sous vide and the rear element run the fan on high; sous vide allows up to 92 °C (98 °C with steam) and the bottom element alone up to 230 °C, so the target comes down to fit; with the fan off, the bottom element alone is proofing (up to 45 °C), so above that the fan goes to low. The Fan select only offers the speeds the stage allows.
 - **A device is missing**: only the devices listed under Supported devices appear. Check the log for "Skipping … only the latest Anova devices are supported".
 - **Debugging**: enable debug logging for `custom_components.anova_culinary.anova_api` to see every message to and from Anova, and download the diagnostics from the integration's ⋮ menu.
 

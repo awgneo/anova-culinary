@@ -41,9 +41,13 @@ def test_rule_table(elements, sous_vide, steam, fans, high) -> None:
 
 
 def test_proofing() -> None:
-    """The bottom element alone with the fan off is proofing: up to 45 °C."""
+    """The bottom element alone with the fan off is proofing: up to 45 °C, so off isn't offered above it."""
     assert limits.temperature_range(False, E.BOTTOM, 0, AnovaPOFanSpeed.OFF) == (25, 45)
     assert limits.temperature_range(False, E.BOTTOM, 0, AnovaPOFanSpeed.LOW) == (25, 230)
+    assert AnovaPOFanSpeed.OFF in limits.allowed_fans(False, E.BOTTOM, 0, 40)
+    assert AnovaPOFanSpeed.OFF not in limits.allowed_fans(False, E.BOTTOM, 0, 200)
+    proofing = limits.normalize_stage(AnovaPOStage(temperature=200, heating_elements=E.BOTTOM, fan=AnovaPOFanSpeed.OFF))
+    assert (proofing.fan, proofing.temperature) == (AnovaPOFanSpeed.LOW, 200)
 
 
 def test_steam_mode() -> None:

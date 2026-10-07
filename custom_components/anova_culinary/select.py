@@ -10,7 +10,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import AnovaConfigEntry
 from .anova_api import AnovaDevice, AnovaPODevice
-from .anova_api.apo import AnovaPOFanSpeed, AnovaPOHeatingElement, AnovaPOTimer, AnovaPOTimerTrigger
+from .anova_api.apo import AnovaPOFanSpeed, AnovaPOHeatingElement, AnovaPOTimer, AnovaPOTimerTrigger, limits
 from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities, is_cooking
 
 PARALLEL_UPDATES = 0
@@ -44,6 +44,8 @@ class AnovaSelectEntityDescription(AnovaEntityDescription, SelectEntityDescripti
     labels: dict[Enum, str]
     value_fn: Callable[[AnovaPODevice], Enum]
     set_fn: Callable[[AnovaPODevice, Enum], Awaitable[None]]
+    # The values the running stage allows right now (all of them by default)
+    allowed_fn: Callable[[AnovaPODevice], list[Enum]] | None = None
 
 
 def _timer_start(oven: AnovaPODevice) -> AnovaPOTimerTrigger:
@@ -66,6 +68,7 @@ SELECTS: tuple[AnovaSelectEntityDescription, ...] = (
         translation_key="fan",
         labels=FANS,
         available_fn=is_cooking,
+        allowed_fn=lambda oven: limits.stage_fans(oven.current_stage),
         value_fn=lambda oven: oven.current_stage.fan,
         set_fn=lambda oven, value: oven.set_fan(value),
     ),
@@ -100,10 +103,14 @@ class AnovaSelect(AnovaEntity[AnovaPODevice], SelectEntity):
 
     entity_description: AnovaSelectEntityDescription
 
-    def __init__(self, device: AnovaPODevice, description: AnovaSelectEntityDescription) -> None:
-        """Initialize the select."""
-        super().__init__(device, description)
-        self._attr_options = list(description.labels.values())
+    @property
+    def options(self) -> list[str]:
+        """The labels of the values the running stage allows (and the current one)."""
+        description = self.entity_description
+        if description.allowed_fn is None or not self.available:
+            return list(description.labels.values())
+        allowed = set(description.allowed_fn(self.device)) | {description.value_fn(self.device)}
+        return [label for value, label in description.labels.items() if value in allowed]
 
     @property
     def current_option(self) -> str | None:

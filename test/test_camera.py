@@ -21,4 +21,5 @@ async def test_webrtc(hass, sent) -> None:
     assert isinstance(messages[0], WebRTCAnswer) and messages[0].answer == "v=0 answer"
     assert isinstance(messages[1], WebRTCError)
     assert camera.entity_picture is None
+    assert hass.states.get("camera.idle_oven_camera").state == "unavailable"
     assert camera.async_get_webrtc_client_configuration().configuration.ice_servers[0].urls == "stun:stun.cloudflare.com:3478"

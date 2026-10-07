@@ -114,11 +114,13 @@ async def test_controls_need_a_cook(idle: AnovaPODevice) -> None:
 
 
 async def test_set_temperature(oven: AnovaPODevice, client: FakeClient) -> None:
-    """The target changes on the stage's bulb, within its range."""
+    """The target changes on the stage's bulb, kept within its range (98 °C: sous vide with steam)."""
     await oven.set_temperature(60)
-    assert client.commands == [("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "wet", "wet": {"setpoint": {"celsius": 60}}})]
-    with pytest.raises(AnovaValidationError):
-        await oven.set_temperature(99)
+    await oven.set_temperature(99)
+    assert client.commands == [
+        ("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "wet", "wet": {"setpoint": {"celsius": 60}}}),
+        ("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "wet", "wet": {"setpoint": {"celsius": 98}}}),
+    ]
 
 
 async def test_set_sous_vide(oven: AnovaPODevice, client: FakeClient) -> None:
@@ -143,6 +145,72 @@ async def test_set_steam(oven: AnovaPODevice, client: FakeClient) -> None:
     assert client.commands == [("CMD_APO_SET_STEAM_GENERATORS", {"mode": "relative-humidity", "relativeHumidity": {"setpoint": 0}})]
 
 
+def dry_stage(oven: AnovaPODevice, celsius: float, top: bool, bottom: bool, rear: bool, fan: int, steam: int = 0) -> None:
+    """Puts the oven in a dry stage with these settings."""
+    state = oven_state()
+    stage = state["cook"]["stages"][0]["do"]
+    stage["temperatureBulbs"] = {"mode": "dry", "dry": {"setpoint": {"celsius": celsius}}}
+    stage["heatingElements"] = {"top": {"on": top}, "bottom": {"on": bottom}, "rear": {"on": rear}}
+    stage["fan"] = {"speed": fan}
+    if steam:
+        stage["steamGenerators"] = {"mode": "steam-percentage", "steamPercentage": {"setpoint": steam}}
+    else:
+        del stage["steamGenerators"]
+    oven.update(state)
+
+
+async def test_steam_off_in_sous_vide_lowers_the_target_first(oven: AnovaPODevice, client: FakeClient) -> None:
+    """Sous vide without steam allows 92 °C: a 95 °C target comes down before steam goes off."""
+    state = oven_state()
+    state["cook"]["stages"][0]["do"]["temperatureBulbs"]["wet"]["setpoint"]["celsius"] = 95
+    oven.update(state)
+    await oven.set_steam(0)
+    assert client.commands == [
+        ("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "wet", "wet": {"setpoint": {"celsius": 92}}}),
+        ("CMD_APO_SET_STEAM_GENERATORS", {"mode": "relative-humidity", "relativeHumidity": {"setpoint": 0}}),
+    ]
+
+
+async def test_bottom_element_lowers_the_target_first(oven: AnovaPODevice, client: FakeClient) -> None:
+    """The bottom element alone allows 230 °C: a 250 °C target comes down before the switch."""
+    dry_stage(oven, 250, top=True, bottom=False, rear=False, fan=100)
+    await oven.set_heating_elements(AnovaPOHeatingElement.BOTTOM)
+    assert client.commands == [
+        ("CMD_APO_SET_TEMPERATURE_BULBS", {"mode": "dry", "dry": {"setpoint": {"celsius": 230}}}),
+        ("CMD_APO_SET_HEATING_ELEMENTS", {"top": {"on": False}, "bottom": {"on": True}, "rear": {"on": False}}),
+    ]
+
+
+async def test_bottom_element_with_the_fan_off_raises_it_to_low(oven: AnovaPODevice, client: FakeClient) -> None:
+    """With the fan off, the bottom element alone is proofing (45 °C): above that the fan goes to low, keeping the target."""
+    dry_stage(oven, 200, top=True, bottom=False, rear=False, fan=0)
+    await oven.set_heating_elements(AnovaPOHeatingElement.BOTTOM)
+    assert client.commands == [
+        ("CMD_APO_SET_FAN", {"speed": 33}),
+        ("CMD_APO_SET_HEATING_ELEMENTS", {"top": {"on": False}, "bottom": {"on": True}, "rear": {"on": False}}),
+    ]
+
+
+async def test_steam_raises_the_fan(oven: AnovaPODevice, client: FakeClient) -> None:
+    """Steam needs the fan on high."""
+    dry_stage(oven, 200, top=True, bottom=False, rear=False, fan=33)
+    await oven.set_steam(30)
+    assert client.commands == [
+        ("CMD_APO_SET_FAN", {"speed": 100}),
+        ("CMD_APO_SET_STEAM_GENERATORS", {"mode": "steam-percentage", "steamPercentage": {"setpoint": 30}}),
+    ]
+
+
+async def test_clamps(oven: AnovaPODevice, client: FakeClient) -> None:
+    """The probe target and the timer stay within their ranges."""
+    await oven.set_probe(150)
+    await oven.set_timer(10**9)
+    assert client.commands == [
+        ("CMD_APO_SET_PROBE", {"setpoint": {"celsius": 100}}),
+        ("CMD_APO_SET_TIMER", {"initial": 359940}),
+    ]
+
+
 async def test_set_fan(oven: AnovaPODevice, client: FakeClient) -> None:
     """Sous vide only allows high; dry heat on the top element allows any speed."""
     with pytest.raises(AnovaValidationError):
@@ -155,6 +223,10 @@ async def test_set_fan(oven: AnovaPODevice, client: FakeClient) -> None:
     oven.update(state)
     await oven.set_fan(AnovaPOFanSpeed.LOW)
     assert client.commands == [("CMD_APO_SET_FAN", {"speed": 33})]
+    # Off isn't proofing above 45 °C on the bottom element alone
+    dry_stage(oven, 200, top=False, bottom=True, rear=False, fan=33)
+    with pytest.raises(AnovaValidationError):
+        await oven.set_fan(AnovaPOFanSpeed.OFF)
 
 
 async def test_set_heating_elements_raises_the_fan(oven: AnovaPODevice, client: FakeClient) -> None:

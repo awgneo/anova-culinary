@@ -3,6 +3,7 @@
 As the Anova Oven app does (PROTOCOL.md, part 2, §3.5): CMD_APO_START_LIVE_STREAM returns
 a Cloudflare WHEP URL and is re-sent every 60 seconds while anyone watches;
 CMD_APO_STOP_LIVE_STREAM ends it. Each viewer posts its SDP offer to the URL (WHEP).
+The oven streams only while cooking.
 """
 
 from __future__ import annotations
@@ -22,12 +23,6 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 KEEP_ALIVE = 60
-# The oven takes a few seconds to start broadcasting after the start command; until it does,
-# the WHEP URL answers 409. Like the app's WHEP client, retry with a doubling delay (from
-# 500 ms), here for up to BROADCAST_WAIT seconds since the stream starts when a viewer opens.
-BROADCAST_WAIT = 20
-RETRY_DELAY = 0.5
-RETRY_DELAY_MAX = 4.0
 # The STUN server the app gives its WebRTC player
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
 
@@ -45,18 +40,10 @@ class AnovaPOLiveStream:
     async def watch(self, viewer: str, offer_sdp: str) -> str:
         """Starts the stream if needed and returns the SDP answer for a viewer's offer."""
         url = await self._device.start_live_stream()
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + BROADCAST_WAIT
-        delay = RETRY_DELAY
         try:
-            while True:
-                status, answer, resource = await self._offer(url, offer_sdp)
-                if status in (200, 201):
-                    break
-                if status != 409 or loop.time() + delay > deadline:
-                    raise AnovaConnectionError(f"The camera stream refused the viewer ({status}): {answer}")
-                await asyncio.sleep(delay)
-                delay = min(delay * 2, RETRY_DELAY_MAX)
+            status, answer, resource = await self._offer(url, offer_sdp)
+            if status not in (200, 201):
+                raise AnovaConnectionError(f"The camera stream refused the viewer ({status}): {answer}")
         except AnovaConnectionError:
             # Nobody ended up watching: stop the stream the oven started for this viewer
             if not self._viewers:
@@ -75,7 +62,9 @@ class AnovaPOLiveStream:
             ) as response:
                 location = response.headers.get("Location")
                 resource = str(response.url.join(URL(location))) if location else None
-                return response.status, await response.text(), resource
+                answer = await response.text()
+                _LOGGER.debug("WHEP offer:\n%s\nanswered %s:\n%s", offer_sdp, response.status, answer)
+                return response.status, answer, resource
         except aiohttp.ClientError as err:
             raise AnovaConnectionError(f"Couldn't reach the camera stream: {err}") from err
 
@@ -103,3 +92,4 @@ class AnovaPOLiveStream:
                 await self._device.start_live_stream()
             except Exception as err:  # noqa: BLE001 - keep trying while anyone watches
                 _LOGGER.debug("Keeping the camera stream alive failed: %s", err)
+

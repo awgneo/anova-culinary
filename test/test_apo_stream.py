@@ -35,16 +35,14 @@ class WhepResponse:
 class WhepSession:
     """Records the offers posted and sessions deleted."""
 
-    def __init__(self, not_started: int = 0) -> None:
+    def __init__(self, refuse: bool = False) -> None:
         self.posts: list[tuple[str, str]] = []
         self.deletes: list[str] = []
-        self.not_started = not_started
+        self.refuse = refuse
 
     def post(self, url: str, data: str, **kwargs: Any) -> WhepResponse:
         self.posts.append((url, data))
-        if len(self.posts) <= self.not_started:
-            return WhepResponse(409)
-        return WhepResponse()
+        return WhepResponse(409 if self.refuse else 201)
 
     def delete(self, url: str, **kwargs: Any) -> WhepResponse:
         self.deletes.append(url)
@@ -90,24 +88,12 @@ async def test_keep_alive() -> None:
     assert client.commands.count("CMD_APO_START_LIVE_STREAM") > 1
 
 
-async def test_waits_for_the_broadcast() -> None:
-    """Until the oven broadcasts, WHEP answers 409; the offer is retried until it does."""
-    client = StreamClient()
-    client.session = WhepSession(not_started=3)
-    oven = AnovaPODevice(client, "oven-1", "oven_v2")
-    with patch.object(stream, "RETRY_DELAY", 0):
-        assert await oven.live_stream.watch("a", "v=0 offer") == "v=0 answer"
-        await oven.live_stream.leave("a")
-    assert len(client.session.posts) == 4
 
-
-async def test_gives_up_when_the_broadcast_never_starts() -> None:
-    """A broadcast that doesn't start in time is an error."""
+async def test_refused_viewer_stops_the_stream() -> None:
+    """A viewer the stream refuses (as an idle oven's does) is an error, and the stream stops."""
     client = StreamClient()
-    client.session = WhepSession(not_started=10**9)
+    client.session = WhepSession(refuse=True)
     oven = AnovaPODevice(client, "oven-1", "oven_v2")
-    # No time to wait: the first refusal ends it, however fast the machine
-    with patch.object(stream, "RETRY_DELAY", 0.001), patch.object(stream, "BROADCAST_WAIT", 0):
-        with pytest.raises(AnovaConnectionError, match="409"):
-            await oven.live_stream.watch("a", "v=0 offer")
+    with pytest.raises(AnovaConnectionError, match="409"):
+        await oven.live_stream.watch("a", "v=0 offer")
     assert client.commands == ["CMD_APO_START_LIVE_STREAM", "CMD_APO_STOP_LIVE_STREAM"]

@@ -8,6 +8,7 @@ app's stage editor does.
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from functools import cached_property
 from datetime import UTC, datetime
 from typing import Any, ClassVar
@@ -120,59 +121,50 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         await self._request(commands.build_stop_command(self.id))
 
     async def set_temperature(self, celsius: float) -> None:
-        """Changes the running stage's target."""
+        """Changes the running stage's target, kept within its settings' range."""
         stage = self._running_stage()
-        limits.validate_temperature(stage, celsius)
-        await self._request(commands.build_set_temperature_bulbs_command(self.id, stage.mode, celsius))
+        fitted = await self._fit(replace(stage, temperature=celsius), sets_temperature=True)
+        await self._request(commands.build_set_temperature_bulbs_command(self.id, fitted.mode, fitted.temperature))
 
     async def set_sous_vide(self, on: bool) -> None:
-        """Switches the running stage between sous vide (wet bulb) and dry heat, keeping its
-        target within the new mode's range. Sous vide runs the fan on high."""
+        """Switches the running stage between sous vide (wet bulb) and dry heat, as the app's
+        switch does: the target carries across (kept within the new range), steam is unchanged."""
         stage = self._running_stage()
         if stage.sous_vide == on:
             return
-        changed = AnovaPOStage(sous_vide=on, heating_elements=stage.heating_elements, steam=stage.steam, fan=stage.fan)
-        low, high = limits.stage_range(changed)
-        await self._raise_fan(changed)
-        await self._request(
-            commands.build_set_temperature_bulbs_command(self.id, changed.mode, min(max(stage.celsius, low), high))
-        )
+        fitted = await self._fit(replace(stage, sous_vide=on), sets_temperature=True)
+        await self._request(commands.build_set_temperature_bulbs_command(self.id, fitted.mode, fitted.temperature))
 
     async def set_steam(self, setpoint: int) -> None:
-        """Changes the running stage's steam; 0 turns it off, as the app's steam control does.
-        Steam runs the fan on high."""
+        """Changes the running stage's steam; 0 turns it off, as the app's steam control does."""
         stage = self._running_stage()
-        limits.validate_steam(setpoint)
-        stage.steam = setpoint
-        await self._raise_fan(stage)
+        fitted = await self._fit(replace(stage, steam=setpoint))
         await self._request(
-            commands.build_set_steam_generators_command(self.id, limits.steam_mode(stage.celsius), setpoint)
+            commands.build_set_steam_generators_command(self.id, limits.steam_mode(fitted.temperature), fitted.steam)
         )
 
     async def set_fan(self, fan: AnovaPOFanSpeed) -> None:
-        """Changes the running stage's fan, within what its other settings allow."""
+        """Changes the running stage's fan, to a speed its other settings allow (limits.stage_fans)."""
         stage = self._running_stage()
-        if fan not in limits.allowed_fans(stage.sous_vide, stage.heating_elements, stage.steam):
-            raise AnovaValidationError("Steam, sous vide and the rear element need the fan on high")
-        stage.fan = fan
-        limits.validate_temperature(stage, stage.celsius)
+        if fan not in limits.stage_fans(stage):
+            raise AnovaValidationError(
+                "Steam, sous vide and the rear element need the fan on high, "
+                f"and the fan can only be off with the bottom element up to {limits.PROOFING_MAX:g} °C"
+            )
         await self._request(commands.build_set_fan_command(self.id, fan.speed))
 
     async def set_heating_elements(self, elements: AnovaPOHeatingElement) -> None:
-        """Changes the running stage's elements, raising the fan to high first if they need it."""
+        """Changes the running stage's elements."""
         stage = self._running_stage()
-        stage.heating_elements = elements
-        await self._raise_fan(stage)
-        limits.validate_temperature(stage, stage.celsius)
+        await self._fit(replace(stage, heating_elements=elements))
         await self._request(
             commands.build_set_heating_elements_command(self.id, elements.top, elements.bottom, elements.rear)
         )
 
     async def set_timer(self, seconds: int) -> None:
-        """Changes the running stage's timer length, leaving when it starts alone."""
+        """Changes the running stage's timer length (up to 99 h 59 min), leaving when it starts alone."""
         self._running_stage()
-        limits.validate_timer(seconds)
-        await self._request(commands.build_set_timer_command(self.id, seconds))
+        await self._request(commands.build_set_timer_command(self.id, min(max(int(seconds), 0), limits.TIMER_MAX)))
 
     async def set_timer_trigger(self, trigger: AnovaPOTimerTrigger) -> None:
         """Changes when the running stage's timer starts, by resending the stages as the app's
@@ -185,11 +177,10 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         await self._request(commands.build_update_cook_stages_command(self.id, stages))
 
     async def set_probe(self, celsius: float | None) -> None:
-        """Sets or clears (None) the running stage's probe target."""
+        """Sets (within the probe's range) or clears (None) the running stage's probe target."""
         self._running_stage()
-        if celsius is not None:
-            limits.validate_probe(celsius)
-        await self._request(commands.build_set_probe_command(self.id, celsius or 0))
+        target = min(max(celsius, limits.PROBE_MIN), limits.PROBE_MAX) if celsius is not None else 0
+        await self._request(commands.build_set_probe_command(self.id, target))
 
     async def set_lamp(self, on: bool) -> None:
         """Turns the light on or off."""
@@ -218,9 +209,14 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
             raise AnovaValidationError("No cook is running")
         return stage
 
-    async def _raise_fan(self, stage: AnovaPOStage) -> None:
-        """Sets the fan to high when `stage`'s settings require it and it isn't."""
-        if stage.fan not in limits.allowed_fans(stage.sous_vide, stage.heating_elements, stage.steam):
-            await self._request(commands.build_set_fan_command(self.id, AnovaPOFanSpeed.HIGH.speed))
-            stage.fan = AnovaPOFanSpeed.HIGH
-
+    async def _fit(self, changed: AnovaPOStage, sets_temperature: bool = False) -> AnovaPOStage:
+        """Makes room for a change to the running stage, so the oven never sees an invalid stage:
+        raises the fan first when the change needs it, then brings the target into the changed
+        range (unless the change itself carries the target). Returns the stage as it will be."""
+        stage = self._running_stage()
+        fitted = limits.normalize_stage(changed)
+        if fitted.fan != stage.fan:
+            await self._request(commands.build_set_fan_command(self.id, fitted.fan.speed))
+        if not sets_temperature and fitted.temperature != stage.temperature:
+            await self._request(commands.build_set_temperature_bulbs_command(self.id, stage.mode, fitted.temperature))
+        return fitted
