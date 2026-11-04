@@ -26,6 +26,7 @@ from .models import (
 )
 from .recipe import recipe_from_cook, stage_from_payload, stages_to_payload, with_timer_trigger
 from .state import AnovaPOState
+from .status import AnovaPOStageStatus, continue_stage_id, stage_status
 from .stream import AnovaPOLiveStream
 
 # How long a lamp change shows before the oven confirms it
@@ -67,6 +68,26 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         if not self.is_cooking or (stage := self.state.cook.active_stage) is None:
             return None
         return stage_from_payload(stage)
+
+    @property
+    def stage_status(self) -> AnovaPOStageStatus:
+        """Where the cook is (status.py)."""
+        return stage_status(self.state)
+
+    @property
+    def stage_number(self) -> int | None:
+        """The running stage's number, from 1."""
+        return self.state.cook.active_stage_index + 1 if self.is_cooking else None
+
+    @property
+    def stage_count(self) -> int | None:
+        """How many stages the cook has."""
+        return len(self.state.cook.stages) if self.is_cooking else None
+
+    @property
+    def can_continue(self) -> bool:
+        """Whether the cook waits on the user for something Continue does."""
+        return continue_stage_id(self.state) is not None
 
     @property
     def temperature(self) -> float | None:
@@ -187,6 +208,13 @@ class AnovaPODevice(AnovaDevice[AnovaPOState]):
         self._lamp_pending = (on, time.monotonic())
         self.notify()
         await self._request(commands.build_set_lamp_command(self.id, on))
+
+    async def continue_cook(self) -> None:
+        """Does what the cook waits on the user for, as the app's buttons do: starts a timer
+        waiting to be started or for food, or the next stage once this one is finished."""
+        if (stage_id := continue_stage_id(self.state)) is None:
+            raise AnovaValidationError("The oven isn't waiting to start a timer or the next stage")
+        await self._request(commands.build_start_stage_command(self.id, stage_id))
 
     async def start_descale(self) -> None:
         """Starts descaling the steam boiler."""

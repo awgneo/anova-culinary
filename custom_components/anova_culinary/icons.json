@@ -80,6 +80,20 @@
       },
       "evaporator_usage": {
         "default": "mdi:counter"
+      },
+      "stage_status": {
+        "default": "mdi:chef-hat",
+        "state": {
+          "idle": "mdi:toaster-oven",
+          "descaling": "mdi:water-sync",
+          "preheating": "mdi:thermometer-chevron-up",
+          "add_food": "mdi:food-turkey",
+          "start_timer": "mdi:timer-play-outline",
+          "plug_in_probe": "mdi:thermometer-probe",
+          "start_next_stage": "mdi:skip-next-circle-outline",
+          "remove_food": "mdi:tray-arrow-up",
+          "holding": "mdi:timer-check-outline"
+        }
       }
     },
     "binary_sensor": {
@@ -129,6 +143,9 @@
     "button": {
       "descale": {
         "default": "mdi:kettle-steam"
+      },
+      "continue": {
+        "default": "mdi:play-circle-outline"
       }
     },
     "camera": {

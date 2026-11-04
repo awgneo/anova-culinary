@@ -113,6 +113,29 @@
       },
       "evaporator_usage": {
         "name": "Evaporator Usage"
+      },
+      "stage_status": {
+        "name": "Stage Status",
+        "state": {
+          "idle": "Idle",
+          "descaling": "Descaling",
+          "preheating": "Preheating",
+          "add_food": "Add food",
+          "start_timer": "Start the timer",
+          "plug_in_probe": "Plug in the probe",
+          "cooking": "Cooking",
+          "start_next_stage": "Start the next stage",
+          "remove_food": "Remove the food",
+          "holding": "Holding"
+        },
+        "state_attributes": {
+          "stage": {
+            "name": "Stage"
+          },
+          "stages": {
+            "name": "Stages"
+          }
+        }
       }
     },
     "binary_sensor": {
@@ -159,6 +182,9 @@
     "button": {
       "descale": {
         "name": "Descale"
+      },
+      "continue": {
+        "name": "Continue"
       }
     },
     "water_heater": {

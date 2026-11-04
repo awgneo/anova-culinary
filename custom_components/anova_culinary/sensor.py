@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from . import AnovaConfigEntry
-from .anova_api import AnovaDevice, AnovaPCDevice, AnovaPODevice
+from .anova_api import AnovaDevice, AnovaPCDevice, AnovaPODevice, AnovaPOStageStatus
 from .anova_api.models import parse_timestamp
 from .entity import AnovaEntity, AnovaEntityDescription, async_setup_device_entities
 
@@ -51,6 +51,13 @@ def _rack(oven: AnovaPODevice) -> int | None:
     return stage.rack if stage else None
 
 
+STAGE_STATUS = AnovaSensorEntityDescription(
+    key="stage_status",
+    translation_key="stage_status",
+    device_class=SensorDeviceClass.ENUM,
+    options=[status.value for status in AnovaPOStageStatus],
+    value_fn=lambda oven: oven.stage_status.value,
+)
 TIMER_REMAINING = AnovaSensorEntityDescription(
     key="timer",
     translation_key="timer_remaining",
@@ -84,6 +91,7 @@ def _diagnostic(key: str, unit: str, device_class: SensorDeviceClass, value_fn: 
 
 
 OVEN_SENSORS: tuple[AnovaSensorEntityDescription, ...] = (
+    STAGE_STATUS,
     TIMER_REMAINING,
     TIMER_ELAPSED,
     AnovaSensorEntityDescription(key="recipe", translation_key="recipe", value_fn=_recipe),
@@ -132,3 +140,10 @@ class AnovaSensor(AnovaEntity[AnovaDevice], SensorEntity):
     def native_value(self) -> StateType:
         """The reading."""
         return self.entity_description.value_fn(self.device) if self.device.state else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, int | None] | None:
+        """The stage status's stage number and count (none while idle)."""
+        if self.entity_description is not STAGE_STATUS:
+            return None
+        return {"stage": self.device.stage_number, "stages": self.device.stage_count}

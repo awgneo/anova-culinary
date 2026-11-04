@@ -1,7 +1,7 @@
 """Anova WiFi device protocol library: the protocol Anova's own apps speak (PROTOCOL.md)."""
 
 from .apc import AnovaPCDevice, AnovaPCState, AnovaPCTemperatureUnit
-from .apo import AnovaPODevice, AnovaPOState
+from .apo import AnovaPODevice, AnovaPOStageStatus, AnovaPOState
 from .auth import AnovaAuth, AnovaSignIn
 from .client import AnovaClient
 from .device import AnovaDevice
@@ -27,6 +27,7 @@ __all__ = [
     "AnovaPCState",
     "AnovaPCTemperatureUnit",
     "AnovaPODevice",
+    "AnovaPOStageStatus",
     "AnovaPOState",
     "AnovaProduct",
     "AnovaSignIn",

@@ -17,6 +17,11 @@ DESCALE = AnovaEntityDescription(
     entity_category=EntityCategory.CONFIG,
     available_fn=lambda oven: not oven.is_cooking,
 )
+CONTINUE = AnovaEntityDescription(
+    key="continue",
+    translation_key="continue",
+    available_fn=lambda oven: oven.can_continue,
+)
 
 
 async def async_setup_entry(
@@ -27,7 +32,9 @@ async def async_setup_entry(
     """Set up the Anova button platform."""
 
     def entities_for(device: AnovaDevice) -> list[ButtonEntity]:
-        return [AnovaDescaleButton(device, DESCALE)] if isinstance(device, AnovaPODevice) else []
+        if not isinstance(device, AnovaPODevice):
+            return []
+        return [AnovaDescaleButton(device, DESCALE), AnovaContinueButton(device, CONTINUE)]
 
     async_setup_device_entities(hass, entry, async_add_entities, entities_for)
 
@@ -38,3 +45,11 @@ class AnovaDescaleButton(AnovaEntity[AnovaPODevice], ButtonEntity):
     async def async_press(self) -> None:
         """Start descaling."""
         await self._call(self.device.start_descale())
+
+
+class AnovaContinueButton(AnovaEntity[AnovaPODevice], ButtonEntity):
+    """Does what the cook waits on: starts its timer, or its next stage (the app's buttons)."""
+
+    async def async_press(self) -> None:
+        """Continue the cook."""
+        await self._call(self.device.continue_cook())

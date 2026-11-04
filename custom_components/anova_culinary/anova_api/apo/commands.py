@@ -108,6 +108,12 @@ def build_set_probe_command(device_id: str, celsius: float) -> dict[str, Any]:
     return build_command(device_id, "CMD_APO_SET_PROBE", probe_payload(celsius))
 
 
+def build_start_stage_command(device_id: str, stage_id: str) -> dict[str, Any]:
+    """Starts a stage of the running cook: the app's Start Stage, and its Start Timer (the
+    running stage again) for a timer waiting on the user."""
+    return build_command(device_id, "CMD_APO_START_STAGE", {"stageId": stage_id})
+
+
 def build_set_lamp_command(device_id: str, on: bool) -> dict[str, Any]:
     """Turns the oven light on or off."""
     return build_command(device_id, "CMD_APO_SET_LAMP", {"on": on})

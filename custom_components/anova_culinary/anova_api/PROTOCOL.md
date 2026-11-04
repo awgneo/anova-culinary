@@ -1075,7 +1075,15 @@ App-derived stage status vocabulary, useful for a status sensor (SEEN, `oven/bun
 - waiting for user: `preheat-stage-awaiting-manual-start-*`, `preheat-stage-preheated-awaiting-manual-transition…`
 - preheating: `preheat-stage-preheating-before-*`
 - cooking: `cook-stage-cooking-no-target`, `-with-timer`, `-with-probe`
-- holding and completed (prefix lists truncated)
+- holding: `cook-stage-holding-after-timer`, `cook-stage-holding-after-probe`
+- completed: `completed-preheating`, `-no-target`, `-timer`, `-probe`
+- waiting for user also covers the cook stage after a preheat: `cook-stage-preheated-waiting-for-manual-timer-start`, `cook-stage-preheated-waiting-for-probe-plugin`, `cook-stage-waiting-for-manual-preheat-start-*` (`waitingForUserStageStates`)
+
+`getStageStateById` (`oven/bundle.js:31270737` in the 1.2.11 bundle) names these on the editor's model, where a preheat is its own stage: past stages are completed; with `isStageTransitionPendingUserAction`, the stage before the active one waits for a manual start and the preheat stage waits for its manual transition; a stage whose target is above the current bulb temperature is preheating (by its timer start type, or probe connected or not); a stage after the active one is queued; the active cook stage is holding once pending (after its timer or probe), else cooking (waiting for the probe when its probe target has no probe in). The Start Timer button (`StageStateTimerButtonControl`) sends `CMD_APO_START_STAGE` with the cook stage's id when the timer starts manually and the stage is preheating or waiting for the user.
+
+`apo/status.py` reads the same states from the oven's one v2 stage (whose `entry` is the preheat): the oven's `activeStageMode` `entering` (or, without it, the bulb below its target) is preheating; a timer idle after the preheat waits for a manual start or for food; a finished timer or probe target holds on the last stage, and otherwise waits for the user (exit on `userAction`) or for the food out (exit on the cavity empty).
+
+Anova's own notifications are FCM pushes from its cloud, carrying `data.eventType` (the app checks `cook_finished`, `stage_finished` and `water_tank_empty`, `handlePushNotificationWhenForegrounded`); nothing in the device protocol carries them.
 
 ---
 

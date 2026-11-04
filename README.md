@@ -32,6 +32,7 @@ If Anova stops accepting the sign-in (for example after a password change), Home
 2. **Play a recipe** from your collection on one or more ovens, from the **Anova** panel or the `play_recipe` action.
 3. **Save a cook started in the Anova app.** When an oven runs a cook that isn't in your collection, the panel offers to import it.
 4. **Adjust the running stage** of any cook (yours or the app's): temperature, sous vide, steam, fan, heating elements, timer and when it starts, and the probe. Changes apply to the current stage only; the recipe is untouched.
+5. **Get told when an oven needs you**, as the Anova app tells you: preheated (add the food, start the timer, plug in the probe), a stage done, the cook holding. See [Alerts](#alerts).
 
 ## Entities
 
@@ -46,10 +47,12 @@ Each **oven** has:
 | Heating Element, Fan, Timer Starts (selects) | The running stage's elements, fan speed, and when its timer starts (immediately, when preheated, when food is detected, manually). |
 | Door Light (switch) | The oven light, at any time. |
 | Camera (camera) | The cavity camera's live feed, over WebRTC. |
+| Stage Status (sensor) | Where the cook is, in the app's terms: Idle, Descaling, Preheating, Add food, Start the timer, Plug in the probe, Cooking, Start the next stage, Remove the food, Holding. Its `stage` and `stages` attributes number the running stage. |
 | Timer Remaining, Timer Elapsed, Recipe, Rack Position (sensors) | The running cook's timer, how long it has run, its recipe, and the stage's rack. |
 | Door Status, Cavity Light, Camera Status (binary sensors) | Door open, cavity lamp, and food detected by the camera. |
 | Water Tank Empty / Low / Removed, Waste Water Tank Full / Removed, Descale Required (binary sensors) | Tank and boiler conditions. |
 | Descale (button) | Starts descaling (only while the oven is idle). |
+| Continue (button) | Does what the cook waits on you for, as the app's buttons do: starts a timer waiting to be started (or for the food), or the next stage once a stage that ends manually is done. Available only then. |
 | Heater and boiler power and usage (sensors, disabled by default) | Hardware diagnostics. |
 
 The running stage's controls are unavailable while the oven is idle; the light and climate entity are always available.
@@ -107,6 +110,24 @@ automation:
         data:
           message: The left oven's water tank is running low.
 ```
+
+## Alerts
+
+The Anova app's notifications come from Anova's cloud to the app, so Home Assistant works the same moments out from the oven's state (the **Stage Status** sensor, which reads it the way the app does). The **Anova oven alerts** blueprint (`blueprints/automation/anova_culinary/oven_alerts.yaml`) turns them into notifications:
+
+| Status | Notification | Action |
+|---|---|---|
+| Add food | Preheated. Put the food in; the timer starts when the oven sees it. | Start timer now |
+| Start the timer | Preheated. Put the food in, then start the timer. | Start timer |
+| Plug in the probe | Plug in the probe. | |
+| Start the next stage | Stage 1 of 2 is done. Start the next stage when you're ready. | Start next stage |
+| Remove the food | Stage 1 of 2 is done. Take the food out to start the next stage. | |
+| Holding | Done. The oven is holding its temperature. | |
+| Water tank empty | The water tank is empty. | |
+
+An action presses the oven's Continue button. Preheating can be told too; you pick which.
+
+To use it, copy the file into your Home Assistant's `blueprints/automation/anova_culinary/` folder (HACS installs only the integration), reload automations, then create one automation per oven from it: its Stage Status, Continue and Water Tank Empty entities, and the notify action for your phones (`notify.mobile_app_<phone>`, or a notify group holding several).
 
 ## How data updates
 

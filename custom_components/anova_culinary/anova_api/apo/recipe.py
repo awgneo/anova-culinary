@@ -146,7 +146,7 @@ def stage_from_payload(stage: dict[str, Any]) -> AnovaPOStage:
     probe = (do.get("temperatureProbe") or {}).get("setpoint", {}).get("celsius")
     advance: AnovaPOTimer | AnovaPOProbe | None = None
     if timer is not None:
-        advance = AnovaPOTimer(duration=int(timer.get("initial", 0)), trigger=_trigger(timer))
+        advance = AnovaPOTimer(duration=int(timer.get("initial", 0)), trigger=timer_trigger(timer))
     elif probe:
         advance = AnovaPOProbe(target=probe)
     return AnovaPOStage(
@@ -175,9 +175,9 @@ def _steam(steam: dict[str, Any]) -> int:
     return int((steam.get(key) or {}).get("setpoint", 0))
 
 
-def _trigger(timer: dict[str, Any]) -> AnovaPOTimerTrigger:
+def timer_trigger(timer: dict[str, Any]) -> AnovaPOTimerTrigger:
     """When a timer starts, from its entry conditions (or the schema's startType)."""
-    paths = dict(_conditions(((timer.get("entry") or {}).get("conditions")) or {}))
+    paths = dict(condition_paths(((timer.get("entry") or {}).get("conditions")) or {}))
     if CAVITY_EMPTY in paths or timer.get("startType") == "on-detection":
         return AnovaPOTimerTrigger.FOOD_DETECTED
     if USER_ACTION in paths or timer.get("startType") == "manual":
@@ -189,7 +189,7 @@ def _trigger(timer: dict[str, Any]) -> AnovaPOTimerTrigger:
 
 def _transition(exit: dict[str, Any]) -> AnovaPOTransition:
     """How the next stage begins, from this stage's exit conditions."""
-    paths = dict(_conditions(exit.get("conditions") or {}))
+    paths = dict(condition_paths(exit.get("conditions") or {}))
     if USER_ACTION in paths:
         return AnovaPOTransition.MANUAL
     if (paths.get(CAVITY_EMPTY) or {}).get("=") is True:
@@ -197,10 +197,10 @@ def _transition(exit: dict[str, Any]) -> AnovaPOTransition:
     return AnovaPOTransition.AUTOMATIC
 
 
-def _conditions(conditions: dict[str, Any]) -> Iterator[tuple[str, dict[str, Any]]]:
+def condition_paths(conditions: dict[str, Any]) -> Iterator[tuple[str, dict[str, Any]]]:
     """Every (node path, condition) in a condition tree, through its and/or groups."""
     for key, value in conditions.items():
         if key in ("and", "or"):
-            yield from _conditions(value or {})
+            yield from condition_paths(value or {})
         elif isinstance(value, dict):
             yield key, value

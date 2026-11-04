@@ -1,0 +1,145 @@
+blueprint:
+  name: Anova oven alerts
+  description: >-
+    Tells you when a Precision Oven needs you, as the Anova app does: preheated (add the food,
+    start the timer or plug in the probe), a stage finished (start the next one, or take the food
+    out), holding once the cook is done, and the water tank empty. A notification for something
+    the oven's Continue button does (start the timer, the next stage) carries that button.
+    One automation per oven.
+  domain: automation
+  source_url: https://github.com/awgneo/anova-culinary/blob/main/blueprints/automation/anova_culinary/oven_alerts.yaml
+  input:
+    status:
+      name: Stage status
+      description: The oven's Stage Status sensor.
+      selector:
+        entity:
+          filter:
+            - integration: anova_culinary
+              domain: sensor
+    continue_button:
+      name: Continue
+      description: The oven's Continue button, pressed from a notification's action.
+      selector:
+        entity:
+          filter:
+            - integration: anova_culinary
+              domain: button
+    water_tank:
+      name: Water tank empty
+      description: The oven's Water Tank Empty sensor.
+      selector:
+        entity:
+          filter:
+            - integration: anova_culinary
+              domain: binary_sensor
+    notify:
+      name: Notify action
+      description: >-
+        The notify action to send with: a phone's (notify.mobile_app_<phone>), or a notify group
+        holding several.
+      default: notify.notify
+      selector:
+        text:
+    alerts:
+      name: Alerts
+      description: Which moments to be told about.
+      default: [add_food, start_timer, plug_in_probe, start_next_stage, remove_food, holding]
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Preheated, add the food (the timer starts when it's seen)
+              value: add_food
+            - label: Preheated, start the timer
+              value: start_timer
+            - label: Plug in the probe
+              value: plug_in_probe
+            - label: Stage done, start the next one
+              value: start_next_stage
+            - label: Stage done, take the food out
+              value: remove_food
+            - label: Done, holding
+              value: holding
+            - label: Preheating started
+              value: preheating
+
+mode: queued
+
+variables:
+  status: !input status
+  continue_button: !input continue_button
+  notify: !input notify
+  alerts: !input alerts
+  oven: "{{ device_attr(device_id(status), 'name_by_user') or device_attr(device_id(status), 'name') or 'Oven' }}"
+  action_id: "ANOVA_CONTINUE_{{ continue_button }}"
+
+triggers:
+  - trigger: state
+    id: status
+    entity_id: !input status
+  - trigger: state
+    id: water_tank
+    entity_id: !input water_tank
+    from: "off"
+    to: "on"
+  - trigger: event
+    id: continue
+    event_type: mobile_app_notification_action
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: continue
+          - "{{ trigger.event.data.action == action_id }}"
+        sequence:
+          - action: button.press
+            target:
+              entity_id: "{{ continue_button }}"
+
+      - conditions:
+          - condition: trigger
+            id: water_tank
+        sequence:
+          - action: "{{ notify }}"
+            data:
+              title: "{{ oven }}"
+              message: The water tank is empty.
+              data:
+                tag: "anova_water_{{ status }}"
+
+      - conditions:
+          - condition: trigger
+            id: status
+          - "{{ trigger.from_state.state not in ['unknown', 'unavailable'] }}"
+          - "{{ trigger.to_state.state != trigger.from_state.state }}"
+          - "{{ trigger.to_state.state in alerts }}"
+        sequence:
+          - variables:
+              to: "{{ trigger.to_state.state }}"
+              stage: "{{ state_attr(status, 'stage') }}"
+              stages: "{{ state_attr(status, 'stages') }}"
+              finished: "{{ 'Stage ' ~ stage ~ ' of ' ~ stages if stages and stages > 1 else 'The stage' }}"
+              messages:
+                preheating: Preheating.
+                add_food: Preheated. Put the food in; the timer starts when the oven sees it.
+                start_timer: Preheated. Put the food in, then start the timer.
+                plug_in_probe: Plug in the probe.
+                start_next_stage: "{{ finished }} is done. Start the next stage when you're ready."
+                remove_food: "{{ finished }} is done. Take the food out to start the next stage."
+                holding: Done. The oven is holding its temperature.
+              buttons:
+                add_food: Start timer now
+                start_timer: Start timer
+                start_next_stage: Start next stage
+          - action: "{{ notify }}"
+            data:
+              title: "{{ oven }}"
+              message: "{{ messages[to] }}"
+              data: >-
+                {% set data = {'tag': 'anova_stage_' ~ status} %}
+                {% if to in buttons %}
+                  {% set data = dict(data, actions=[{'action': action_id, 'title': buttons[to]}]) %}
+                {% endif %}
+                {{ data }}
