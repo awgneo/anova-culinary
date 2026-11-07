@@ -239,6 +239,9 @@ class AnovaCulinary extends LitElement {
     if (field === "rack") value = parseInt(value) || null;
 
     stage[field] = value;
+    // Switching the mode sets the steam: sous vide at 100 %, as the app's sous vide cooks do, dry roasting
+    // without
+    if (field === "sous_vide") stage.steam = value ? 100 : 0;
     this._refreshLimits();
     this.requestUpdate();
   }
@@ -590,7 +593,7 @@ class AnovaCulinary extends LitElement {
                     
                     <div class="form-group">
                         <label>STEAM (%)</label>
-                        <input type="number" min="0" max="100" .value=${stage.steam} @input=${e => this._updateStage(i, 'steam', e.target.value)} .disabled=${stage.sous_vide} />
+                        <input type="number" min="0" max="100" .value=${stage.steam} @input=${e => this._updateStage(i, 'steam', e.target.value)} />
                     </div>
 
                     <div class="form-group">
