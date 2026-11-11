@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
@@ -60,6 +61,14 @@ async def test_devices_paired_later(hass, client) -> None:
     client._process_discovery(AnovaProduct.APO, [{"cookerId": "oven-1", "type": "oven_v2"}])
     await hass.async_block_till_done()
     assert dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "oven-3")}) is None
+
+
+async def test_closes_when_home_assistant_stops(hass, sent) -> None:
+    """Stopping Home Assistant closes the connection before the shared session goes."""
+    AnovaClient.close.assert_not_awaited()
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
+    await hass.async_block_till_done()
+    AnovaClient.close.assert_awaited_once()
 
 
 async def test_unload(hass, mock_config_entry, sent) -> None:

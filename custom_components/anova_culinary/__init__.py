@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
@@ -59,6 +59,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnovaConfigEntry) -> boo
     entry.runtime_data = client
     entry.async_on_unload(client.register_auth_error_callback(lambda _: entry.async_start_reauth(hass)))
     entry.async_on_unload(client.register_device_callback(_device_removed(hass, entry)))
+
+    async def _close_on_stop(_: Event) -> None:
+        # Home Assistant doesn't unload entries when it stops, it closes the shared session; closing
+        # first keeps the sockets that session ends from being reported as dropped and reconnected
+        await client.close()
+
+    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _close_on_stop))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
