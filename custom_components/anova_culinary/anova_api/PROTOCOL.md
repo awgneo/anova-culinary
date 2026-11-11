@@ -110,7 +110,7 @@ From `source/resources/res/values/strings.xml`, plus `default_web_client_id` [se
 
 * There is **no** call that trades the Firebase ID token for an Anova token, at any URL or over the WS [seen: every backend call site listed below passes `getIdToken()` output directly].
 * Token refresh is handled by the native SDK's `user.getIdToken()`, called with no `forceRefresh` [seen: OVN `firebaseTokenQueryParam` @~26428883, CUL @15108764]. The SDK uses the refresh token at `securetoken.googleapis.com` when the ID token is near expiry. This matches what `auth.py` does by hand.
-* The WS gets a token **only at connect time**. Neither app re-sends a token on an open socket or reconnects on a timer. The token refreshes only on the next reconnect (app foregrounding, Wi-Fi change, or close). What the server does when a connected token expires is unknown. Reconnecting proactively before the 1-hour expiry, as `client.py` does, is the safe approach [inferred].
+* The WS gets a token **only at connect time**. Neither app re-sends a token on an open socket or reconnects on a timer. The token refreshes only on the next reconnect (app foregrounding, Wi-Fi change, or close). What the server does when a connected token expires is unknown. Opening a fresh socket before the 1-hour expiry, as `connection.py` does (it opens the new socket first and closes the old one once its commands are answered), is the safe approach [inferred].
 
 #### 1.4 `CMD_AUTH_TOKEN` / `AUTH_TOKEN_V2` / `RESPONSE_AUTH`: in-band auth, defined but unused by the apps
 

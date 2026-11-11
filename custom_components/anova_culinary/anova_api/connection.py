@@ -2,6 +2,11 @@
 
 See PROTOCOL.md, part 1, §2: the URL and its query, the ANOVA_V2 subprotocol, a flat
 5-second reconnect, and every command answered by a RESPONSE matched on its requestId.
+
+The socket takes its token only when it opens, so before the token expires the connection rolls
+over: it opens a socket with a fresh token, sends on it from then on, and closes the old one once
+the commands sent on it have their responses. A rollover isn't a drop: nothing is reported, and
+the devices stay available throughout.
 """
 
 import asyncio
@@ -56,6 +61,8 @@ class AnovaConnection:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._task: asyncio.Task[None] | None = None
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        # Sockets rolled over from, each closing once its commands have their responses
+        self._retiring: set[asyncio.Task[None]] = set()
         self._closing = False
 
     @property
@@ -83,6 +90,9 @@ class AnovaConnection:
             except asyncio.CancelledError:
                 pass
             self._task = None
+        for retiring in list(self._retiring):
+            retiring.cancel()
+        await asyncio.gather(*self._retiring, return_exceptions=True)
         if self._ws and not self._ws.closed:
             await self._ws.close()
         self._fail_pending(AnovaConnectionError("The connection was closed"))
@@ -110,11 +120,18 @@ class AnovaConnection:
             self._pending.pop(request_id, None)
 
     async def _open(self) -> None:
-        """Opens one WebSocket with a fresh token."""
+        """Opens the WebSocket and reports the connection."""
+        self._ws = await self._open_socket()
+        _LOGGER.debug("Connected to Anova")
+        if self._on_connection:
+            self._on_connection(True)
+
+    async def _open_socket(self) -> aiohttp.ClientWebSocketResponse:
+        """Opens one WebSocket with a valid token."""
         token = await self._auth.get_valid_token()
         url = f"{ANOVA_WS_URL}?token={token}&supportedAccessories={SUPPORTED_ACCESSORIES}&platform=android"
         try:
-            self._ws = await self._session.ws_connect(
+            return await self._session.ws_connect(
                 url,
                 protocols=(ANOVA_WS_PROTOCOL,),
                 headers=ANOVA_WS_HEADERS,
@@ -127,12 +144,9 @@ class AnovaConnection:
             raise AnovaConnectionError(f"Anova refused the connection: {err}") from err
         except (aiohttp.ClientError, TimeoutError) as err:
             raise AnovaConnectionError(f"Couldn't reach Anova: {err}") from err
-        _LOGGER.debug("Connected to Anova")
-        if self._on_connection:
-            self._on_connection(True)
 
     async def _run(self) -> None:
-        """Reads until the socket closes, then reconnects after RECONNECT_DELAY."""
+        """Reads until the socket drops, then reports it and reconnects."""
         while not self._closing:
             try:
                 await self._read()
@@ -149,9 +163,11 @@ class AnovaConnection:
             await self._reconnect()
 
     async def _reconnect(self) -> None:
-        """Retries every RECONNECT_DELAY until connected or closed."""
+        """Retries at once, then every RECONNECT_DELAY, until connected or closed."""
+        delay = 0.0
         while not self._closing:
-            await asyncio.sleep(RECONNECT_DELAY)
+            await asyncio.sleep(delay)
+            delay = RECONNECT_DELAY
             try:
                 await self._open()
                 _LOGGER.info("Reconnected to Anova")
@@ -165,23 +181,75 @@ class AnovaConnection:
                 _LOGGER.debug("Reconnecting to Anova failed: %s", err)
 
     async def _read(self) -> None:
-        """Dispatches messages until the socket closes or the token is about to expire."""
+        """Reads until the socket closes, rolling over to a fresh token each time the token is about
+        to expire. A rollover that fails is tried again every RECONNECT_DELAY on the socket still open."""
         ws = self._ws
         if ws is None or ws.closed:
             return
-        # Reconnect with a fresh token before this one expires
-        expiry = asyncio.get_running_loop().call_later(
-            max(0.0, self._auth.expires_at - time.time()), lambda: asyncio.ensure_future(ws.close())
-        )
+        reading = asyncio.ensure_future(self._receive(ws))
         try:
-            async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    self._dispatch(msg.data)
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    _LOGGER.debug("Anova WebSocket error: %s", ws.exception())
-                    break
-        finally:
-            expiry.cancel()
+            rollover = self._auth.expires_at
+            while True:
+                done, _ = await asyncio.wait({reading}, timeout=max(0.0, rollover - time.time()))
+                if reading in done:
+                    reading.result()
+                    return
+                if await self._roll_over():
+                    self._retire(ws, reading)
+                    ws = self._ws
+                    reading = asyncio.ensure_future(self._receive(ws))
+                    rollover = self._auth.expires_at
+                else:
+                    rollover = time.time() + RECONNECT_DELAY
+        except BaseException:
+            reading.cancel()
+            raise
+
+    async def _receive(self, ws: aiohttp.ClientWebSocketResponse) -> None:
+        """Dispatches one socket's messages until it closes."""
+        async for msg in ws:
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                self._dispatch(msg.data)
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                _LOGGER.debug("Anova WebSocket error: %s", ws.exception())
+                break
+
+    async def _roll_over(self) -> bool:
+        """Opens a socket with a fresh token and sends on it from now on; whether it opened.
+
+        A sign-in Anova no longer accepts closes the open socket, so reconnecting reports it.
+        """
+        try:
+            ws = await self._open_socket()
+        except AnovaAuthError as err:
+            _LOGGER.debug("Rolling over to a fresh token was refused: %s", err)
+            if self._ws is not None:
+                await self._ws.close()
+            return False
+        except AnovaConnectionError as err:
+            _LOGGER.debug("Rolling over to a fresh token failed: %s", err)
+            return False
+        self._ws = ws
+        _LOGGER.debug("Rolled over to a fresh token")
+        return True
+
+    def _retire(self, ws: aiohttp.ClientWebSocketResponse, reading: asyncio.Task[None]) -> None:
+        """Keeps reading a rolled-over socket until the commands sent on it have their responses
+        (COMMAND_TIMEOUT at most), then closes it."""
+        waiting = [future for future in self._pending.values() if not future.done()]
+
+        async def retire() -> None:
+            try:
+                if waiting:
+                    await asyncio.wait(waiting, timeout=COMMAND_TIMEOUT)
+            finally:
+                reading.cancel()
+                await asyncio.gather(reading, return_exceptions=True)
+                await ws.close()
+
+        task = asyncio.create_task(retire())
+        self._retiring.add(task)
+        task.add_done_callback(self._retiring.discard)
 
     def _dispatch(self, text: str) -> None:
         """Resolves a response, or passes an event on."""

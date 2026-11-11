@@ -93,9 +93,13 @@ class FakeSession:
         self.connects: list[dict[str, Any]] = []
         self.responder: Any = ok
         self.refused: int | None = None
+        # Anova can't be reached: connecting fails before any handshake
+        self.unreachable = False
 
     async def ws_connect(self, url: str, **kwargs: Any) -> FakeWebSocket:
         self.connects.append({"url": url, **kwargs})
+        if self.unreachable:
+            raise aiohttp.ClientConnectionError("unreachable")
         if self.refused is not None:
             raise aiohttp.WSServerHandshakeError(None, (), status=self.refused)
         socket = FakeWebSocket()
