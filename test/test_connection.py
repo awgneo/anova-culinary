@@ -249,3 +249,65 @@ async def test_close_during_rollover_closes_every_socket(session: FakeSession) -
     assert all(socket.closed for socket in session.sockets)
     with pytest.raises(AnovaConnectionError):
         await pending
+
+
+async def test_command_waits_for_a_reconnect(session: FakeSession, events) -> None:
+    """A command sent while the socket is down goes out once it reopens."""
+    conn, _ = events
+    session.unreachable = True
+    with patch.object(connection, "RECONNECT_DELAY", 0.05):
+        await session.socket.close()
+        await settle()
+        assert not conn.connected
+        pending = asyncio.ensure_future(conn.request({"command": "CMD_APO_STOP", "payload": {}}))
+        await settle()
+        session.unreachable = False
+        assert await pending == {"status": "ok"}
+    first, second = session.sockets[0], session.sockets[-1]
+    assert first.sent == []
+    assert [message["command"] for message in second.sent] == ["CMD_APO_STOP"]
+
+
+async def test_command_fails_when_the_socket_stays_down(session: FakeSession, events) -> None:
+    """A command waits for the socket only within its timeout, and is never sent late."""
+    conn, _ = events
+    session.unreachable = True
+    with patch.object(connection, "RECONNECT_DELAY", 0.05):
+        await session.socket.close()
+        await settle()
+        with pytest.raises(AnovaConnectionError, match="Not connected"):
+            await conn.request({"command": "CMD_APO_STOP", "payload": {}}, timeout=0.1)
+        session.unreachable = False
+        await asyncio.sleep(0.1)
+        await settle()
+    assert conn.connected
+    assert all(socket.sent == [] for socket in session.sockets)
+
+
+async def test_close_fails_waiting_commands(session: FakeSession, events) -> None:
+    """Closing the connection fails the commands waiting for the socket at once."""
+    conn, _ = events
+    session.unreachable = True
+    with patch.object(connection, "RECONNECT_DELAY", 60):
+        await session.socket.close()
+        await settle()
+        pending = asyncio.ensure_future(conn.request({"command": "CMD_APO_STOP", "payload": {}}))
+        await settle()
+        await conn.close()
+        with pytest.raises(AnovaConnectionError):
+            await pending
+
+
+async def test_revoked_sign_in_fails_waiting_commands(session: FakeSession, events) -> None:
+    """A sign-in Anova stops accepting fails the commands waiting for the socket."""
+    conn, _ = events
+    session.unreachable = True
+    with patch.object(connection, "RECONNECT_DELAY", 0.05):
+        await session.socket.close()
+        await settle()
+        pending = asyncio.ensure_future(conn.request({"command": "CMD_APO_STOP", "payload": {}}))
+        await settle()
+        session.unreachable = False
+        session.refused = 401
+        with pytest.raises(AnovaConnectionError):
+            await pending

@@ -7,6 +7,10 @@ The socket takes its token only when it opens, so before the token expires the c
 over: it opens a socket with a fresh token, sends on it from then on, and closes the old one once
 the commands sent on it have their responses. A rollover isn't a drop: nothing is reported, and
 the devices stay available throughout.
+
+Like the apps' command queue, a command sent while the socket is down waits for it to reopen and
+is sent then, within the same COMMAND_TIMEOUT that bounds its response: a short drop delays a
+command instead of failing it, and a command is never sent later than that.
 """
 
 import asyncio
@@ -64,6 +68,8 @@ class AnovaConnection:
         # Sockets rolled over from, each closing once its commands have their responses
         self._retiring: set[asyncio.Task[None]] = set()
         self._closing = False
+        # Set (and replaced) each time the socket opens, drops or closes, waking commands waiting on it
+        self._changed = asyncio.Event()
 
     @property
     def connected(self) -> bool:
@@ -96,32 +102,51 @@ class AnovaConnection:
         if self._ws and not self._ws.closed:
             await self._ws.close()
         self._fail_pending(AnovaConnectionError("The connection was closed"))
+        self._wake()
 
     async def request(self, message: dict[str, Any], timeout: float = COMMAND_TIMEOUT) -> dict[str, Any]:
         """Sends a command and returns its response's payload.
 
-        Raises AnovaConnectionError if not connected, AnovaTimeoutError if no response comes,
-        and AnovaCommandError if the device rejects it.
+        A command sent while the socket is reconnecting waits for it, within the same timeout.
+        Raises AnovaConnectionError if the socket isn't open in time (or the connection was
+        closed), AnovaTimeoutError if no response comes, and AnovaCommandError if the device
+        rejects it.
         """
-        if not self.connected:
-            raise AnovaConnectionError("Not connected to Anova")
         request_id = str(uuid.uuid4())
         future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
-        self._pending[request_id] = future
+        sent = False
         try:
-            text = json.dumps({**message, "requestId": request_id})
-            _LOGGER.debug("Sending %s", text)
-            await self._ws.send_str(text)
             async with asyncio.timeout(timeout):
+                await self._wait_connected()
+                self._pending[request_id] = future
+                text = json.dumps({**message, "requestId": request_id})
+                _LOGGER.debug("Sending %s", text)
+                await self._ws.send_str(text)
+                sent = True
                 return await future
         except TimeoutError as err:
+            if not sent:
+                raise AnovaConnectionError(f"Not connected to Anova for {timeout:g}s") from err
             raise AnovaTimeoutError(f"{message.get('command')} got no response in {timeout:g}s") from err
         finally:
             self._pending.pop(request_id, None)
 
+    async def _wait_connected(self) -> None:
+        """Waits for the socket to be open; raises AnovaConnectionError once it won't reopen."""
+        while not self.connected:
+            if self._closing or self._task is None:
+                raise AnovaConnectionError("Not connected to Anova")
+            await self._changed.wait()
+
+    def _wake(self) -> None:
+        """Wakes the commands waiting for the socket to check it again."""
+        self._changed.set()
+        self._changed = asyncio.Event()
+
     async def _open(self) -> None:
         """Opens the WebSocket and reports the connection."""
         self._ws = await self._open_socket()
+        self._wake()
         _LOGGER.debug("Connected to Anova")
         if self._on_connection:
             self._on_connection(True)
@@ -175,6 +200,7 @@ class AnovaConnection:
             except AnovaAuthError as err:
                 _LOGGER.warning("Anova no longer accepts the sign-in: %s", err)
                 self._closing = True
+                self._wake()
                 if self._on_auth_error:
                     self._on_auth_error(err)
             except AnovaConnectionError as err:

@@ -166,7 +166,7 @@ HTTP layer, from React Native's `WebSocketModule` (jadx `com/facebook/react/modu
 * `useWebsocketListener` listens with `auth().onAuthStateChanged`:
   * signed out: `disconnectIfConnected()`
   * signed in: `setUser(user)`, set `processMessage`, then `connect()`
-* `connect()` returns early when the socket is already CONNECTING/OPEN, when `isInitializing` is set, or when there is no user. Otherwise it resets `lastOvenState = {}`, gets the ID token, opens the socket, and wires the handlers:
+* `connect()` returns early when the socket is still CONNECTING, when `isInitializing` is set, or when there is no user. **An OPEN socket is not kept**: `connect()` calls `disconnectIfConnected()` (which sets `requestingDisconnect`, so its `onclose` doesn't reconnect) and opens a new one. Every foregrounding and every Wi-Fi reconnect therefore replaces the socket, closing first, and that is how the app gets a fresh token onto the socket. It then resets `lastOvenState = {}`, gets the ID token, opens the socket, and wires the handlers:
   * `onopen`: drain the command queue now, then again after `setTimeout(…, 500)`.
   * `onmessage`: if `typeof data === 'string'`, `JSON.parse` it and call `processMessage`.
   * `onclose`: if the close was not requested by the app, call `reconnect()`, which does `sleep(5)` (5 s) and then `connect()`. **Fixed 5 s delay, no backoff, no retry cap.** Then stop the BackgroundTimer.
@@ -174,6 +174,12 @@ HTTP layer, from React Native's `WebSocketModule` (jadx `com/facebook/react/modu
   * `'active'`: `connect()`
   * `'background'`: `BackgroundTimer.start()`, then `disconnectIfConnected()`. **The app holds no socket in the background.**
 * NetInfo: on `type==='wifi' && isConnected`, call `connect()`.
+* **Commands are queued, not refused** (`CommandProcessor`, OVN@~741521) [seen]:
+  * `enqueueCommand` pushes the command onto a `FIFOQueue` that only sends while `canSendCommand()` (the socket is OPEN), and races the whole thing against `COMMAND_TIMEOUT_SECONDS` (10 s). On a timeout or error it calls `drainOutstandingRequests()`, failing everything still queued.
+  * Each queued command is stamped when it is queued. When its turn comes it is sent only if it is at most `COMMAND_TIMEOUT_SECONDS` old, so a command is never sent late.
+  * A response resolves the command through `commandReturnResponses[requestId]`.
+  * So a command sent during a short drop goes out when the socket reopens (`onopen` drains the queue).
+* `canSyncFromOven`: the UI ignores oven state for 1.5 s after the user's last command (`markUserInteraction`, for start-stage, timer, probe, element, bulb, steam, fan and cook-stage commands), so its controls don't jump back. This is UI-only.
 * **The client sends nothing on open**: no hello, no subscribe, no heartbeat. Only queued commands go out. `CMD_APO_HEALTHCHECK` / `HealthCheckCommandFactory` exist but are never called [seen].
 
 **CUL `APCWebsocket`** (CUL@15058000–15125000) [seen]:
